@@ -85,7 +85,12 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	mux := http.NewServeMux()
-	handler.New(&cfg).Register(mux, sessionMiddleware)
+	h, err := handler.New(&cfg)
+	if err != nil {
+		slog.Error("failed to create handler", "err", err)
+		os.Exit(1)
+	}
+	h.Register(mux, sessionMiddleware)
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           middleware.RequestID(middleware.RequestLog(mux)),

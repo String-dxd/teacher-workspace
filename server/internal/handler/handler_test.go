@@ -6,10 +6,48 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
 )
+
+func TestNew(t *testing.T) {
+	t.Run("fails when index.html is missing in production environment", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.Env = config.EnvProduction
+		cfg.BuildDir = t.TempDir()
+
+		_, err := New(&cfg)
+
+		if err == nil {
+			t.Fatal("want err: non-nil; got: nil")
+		}
+		if want := "read index.html"; !strings.Contains(err.Error(), want) {
+			t.Errorf("want err: containing %q; got: %q", want, err)
+		}
+	})
+
+	t.Run("fails when index.html is not a valid template in production environment", func(t *testing.T) {
+		buildDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html>{{</html>"), 0o644); err != nil {
+			t.Fatalf("os.WriteFile: %v", err)
+		}
+
+		cfg := config.Default()
+		cfg.Env = config.EnvProduction
+		cfg.BuildDir = buildDir
+
+		_, err := New(&cfg)
+
+		if err == nil {
+			t.Fatal("want err: non-nil; got: nil")
+		}
+		if want := "parse index.html"; !strings.Contains(err.Error(), want) {
+			t.Errorf("want err: containing %q; got: %q", want, err)
+		}
+	})
+}
 
 func TestHandler_Register(t *testing.T) {
 	t.Run("routes to the handler matching the request path", func(t *testing.T) {
@@ -38,9 +76,11 @@ func TestHandler_Register(t *testing.T) {
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
-		cfg.Remotes = "pg=https://pg.test/mf-manifest.json"
 
-		h := New(&cfg)
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		mux := http.NewServeMux()
 		h.Register(mux, func(next http.Handler) http.Handler { return next })
@@ -53,7 +93,6 @@ func TestHandler_Register(t *testing.T) {
 		}{
 			{name: "index", target: "/", wantCode: http.StatusOK, wantBody: "<html>Hello world!</html>"},
 			{name: "static asset", target: "/static/js/index.abc123.js", wantCode: http.StatusOK, wantBody: "console.log('Hello world!');"},
-			{name: "runtime config", target: "/config.json", wantCode: http.StatusOK, wantBody: "{\"remotes\":[{\"name\":\"pg\",\"entry\":\"https://pg.test/mf-manifest.json\"}]}\n"},
 			{name: "API", target: "/api/posts/hello", wantCode: http.StatusOK, wantBody: "posts:/hello"},
 			{name: "API path naming no app", target: "/api/", wantCode: http.StatusNotFound, wantBody: "{\"message\":\"Not Found\"}\n"},
 		}
@@ -94,7 +133,10 @@ func TestHandler_Register(t *testing.T) {
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h := New(&cfg)
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		tests := []struct {
 			name   string
@@ -131,7 +173,7 @@ func TestHandler_Register(t *testing.T) {
 		}
 	})
 
-	t.Run("serves static assets and runtime config without the session middleware", func(t *testing.T) {
+	t.Run("serves static assets without the session middleware", func(t *testing.T) {
 		buildDir := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(buildDir, "static", "js"), 0o755); err != nil {
 			t.Fatalf("os.MkdirAll: %v", err)
@@ -139,45 +181,39 @@ func TestHandler_Register(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(buildDir, "static", "js", "index.abc123.js"), []byte("console.log('Hello world!');"), 0o644); err != nil {
 			t.Fatalf("os.WriteFile: %v", err)
 		}
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html>Hello world!</html>"), 0o644); err != nil {
+			t.Fatalf("os.WriteFile: %v", err)
+		}
 
 		cfg := config.Default()
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = buildDir
 
-		h := New(&cfg)
-
-		tests := []struct {
-			name   string
-			target string
-		}{
-			{name: "static asset", target: "/static/js/index.abc123.js"},
-			{name: "runtime config", target: "/config.json"},
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
 		}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				var calls int
+		var calls int
 
-				mux := http.NewServeMux()
-				h.Register(mux, func(next http.Handler) http.Handler {
-					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						calls++
-						next.ServeHTTP(w, r)
-					})
-				})
-
-				req := httptest.NewRequest(http.MethodGet, tt.target, nil)
-				rec := httptest.NewRecorder()
-
-				mux.ServeHTTP(rec, req)
-
-				if want, got := http.StatusOK, rec.Code; want != got {
-					t.Errorf("want: %d; got: %d", want, got)
-				}
-				if want := 0; want != calls {
-					t.Errorf("want: %d; got: %d", want, calls)
-				}
+		mux := http.NewServeMux()
+		h.Register(mux, func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				next.ServeHTTP(w, r)
 			})
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/static/js/index.abc123.js", nil)
+		rec := httptest.NewRecorder()
+
+		mux.ServeHTTP(rec, req)
+
+		if want, got := http.StatusOK, rec.Code; want != got {
+			t.Errorf("want: %d; got: %d", want, got)
+		}
+		if want := 0; want != calls {
+			t.Errorf("want: %d; got: %d", want, calls)
 		}
 	})
 }

@@ -1,8 +1,12 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	stdhttputil "net/http/httputil"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
 	"github.com/String-sg/teacher-workspace/server/internal/httputil"
@@ -14,13 +18,16 @@ type Handler struct {
 	cfg *config.Config
 
 	devProxy             *stdhttputil.ReverseProxy
+	devClient            *http.Client
 	studentInsightsProxy *stdhttputil.ReverseProxy
 	postsProxy           *stdhttputil.ReverseProxy
 	assets               http.Handler
+	indexPage            []byte
 }
 
-// New creates a new Handler.
-func New(cfg *config.Config) *Handler {
+// New creates a new Handler. In production it renders index.html once, so a
+// missing or malformed page fails here rather than on the first request.
+func New(cfg *config.Config) (*Handler, error) {
 	h := &Handler{
 		cfg: cfg,
 		studentInsightsProxy: &stdhttputil.ReverseProxy{
@@ -40,19 +47,29 @@ func New(cfg *config.Config) *Handler {
 	switch cfg.Env {
 	case config.EnvDevelopment:
 		h.devProxy = stdhttputil.NewSingleHostReverseProxy(cfg.DevServerURL)
+		h.devClient = &http.Client{Timeout: 10 * time.Second}
 	case config.EnvProduction:
 		h.assets = http.FileServer(http.Dir(cfg.BuildDir))
+
+		source, err := os.ReadFile(filepath.Join(cfg.BuildDir, "index.html"))
+		if err != nil {
+			return nil, fmt.Errorf("read index.html: %w", err)
+		}
+		page, err := renderIndex(source, cfg.ParsedRemotes())
+		if err != nil {
+			return nil, err
+		}
+		h.indexPage = page
 	}
 
-	return h
+	return h, nil
 }
 
 // Register registers all application routes on the given HTTP server mux.
-// Application routes are wrapped in the session middleware; static assets and
-// the runtime config are not.
+// Application routes are wrapped in the session middleware; static asset routes
+// are not.
 func (h *Handler) Register(mux *http.ServeMux, session middleware.Middleware) {
 	mux.HandleFunc("/static/", h.static)
-	mux.HandleFunc("/config.json", h.runtimeConfig)
 
 	// Session-scoped routes: everything registered on this sub-mux runs
 	// through the session middleware, which is applied a single time.

@@ -14,40 +14,28 @@ interface RuntimeConfig {
   remotes: RuntimeRemote[];
 }
 
-// A failed fetch leaves the shell running with no remotes: the routes that need
-// one show their fallback instead of the whole page going blank.
-async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+// A page served without the block, such as one loaded straight from the rsbuild
+// dev server, runs with no remotes and the routes that need one show their fallback.
+function readRuntimeConfig(): RuntimeConfig {
   try {
-    const response = await fetch('/config.json');
-    if (!response.ok) {
-      throw new Error(`/config.json responded ${response.status}`);
-    }
-    const config = (await response.json()) as Partial<RuntimeConfig>;
+    const source = document.getElementById('runtime-config')?.textContent ?? '';
+    const config = (JSON.parse(source) ?? {}) as Partial<RuntimeConfig>;
     return { remotes: config.remotes ?? [] };
   } catch (error: unknown) {
-    console.error('Could not load /config.json; no remotes registered', error);
+    console.error('Could not read the runtime config from the page; no remotes registered', error);
     return { remotes: [] };
   }
 }
 
-async function boot() {
-  const container = document.getElementById('root');
-  if (!container) throw new Error('Root element #root not found');
+const container = document.getElementById('root');
+if (!container) throw new Error('Root element #root not found');
 
-  // Registered once, before the first render, so a route that lazy-loads a
-  // remote never races the fetch that decides where that remote lives.
-  const { remotes } = await loadRuntimeConfig();
-  if (remotes.length > 0) {
-    registerRemotes(remotes);
-  }
+// Registered before the first render, so a route that lazy-loads a remote
+// always finds its entry.
+registerRemotes(readRuntimeConfig().remotes);
 
-  createRoot(container).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  );
-}
-
-boot().catch((error: unknown) => {
-  console.error('Failed to start the app', error);
-});
+createRoot(container).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
