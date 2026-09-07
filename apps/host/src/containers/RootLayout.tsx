@@ -3,6 +3,7 @@ import { Outlet } from 'react-router';
 
 import { AppSidebar } from '~/components/Sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '~/components/ui/sidebar';
+import { WelcomeModal } from '~/components/WelcomeModal';
 
 export default function RootLayout() {
   return (
@@ -16,6 +17,7 @@ export default function RootLayout() {
           <Outlet />
         </React.Suspense>
       </SidebarInset>
+      <WelcomeModal />
     </SidebarProvider>
   );
 }
