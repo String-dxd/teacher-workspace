@@ -101,6 +101,12 @@ func (h *Handler) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if storedVerifier == "" {
+		logger.Warn("code verifier missing from session")
+		httputil.RenderPlain(w, logger, http.StatusForbidden)
+		return
+	}
+
 	token, err := h.rp.OAuth2.Exchange(r.Context(), code, oauth2.VerifierOption(storedVerifier))
 	if err != nil {
 		logger.Error("failed to exchange authorization code", "err", err)
@@ -122,8 +128,8 @@ func (h *Handler) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if idToken.Nonce != storedNonce {
-		logger.Warn("nonce mismatch")
+	if storedNonce == "" || idToken.Nonce != storedNonce {
+		logger.Warn("nonce mismatch or missing")
 		httputil.RenderPlain(w, logger, http.StatusForbidden)
 		return
 	}

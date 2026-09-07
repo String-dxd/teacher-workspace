@@ -386,6 +386,22 @@ func TestHandler_authCallback(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects missing code verifier", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		state := "test-state"
+		sess := newSessionWithOIDC(state, "test-nonce", "")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authCallback(rec, req)
+
+		if want, got := http.StatusForbidden, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
 	t.Run("rejects when no OIDC values in session", func(t *testing.T) {
 		env := newCallbackTestEnv(t)
 
@@ -440,6 +456,25 @@ func TestHandler_authCallback(t *testing.T) {
 		*env.tokenEmail = "jane@example.com"
 
 		sess := newSessionWithOIDC(state, "session-nonce-A", "test-verifier")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authCallback(rec, req)
+
+		if want, got := http.StatusForbidden, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("rejects missing nonce", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		state := "test-state"
+		*env.tokenNonce = "token-nonce"
+		*env.tokenEmail = "jane@example.com"
+
+		sess := newSessionWithOIDC(state, "", "test-verifier")
 		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
