@@ -17,6 +17,13 @@ const (
 	sessionKeyOIDCCodeVerifier = "oidc_code_verifier"
 )
 
+func popSessionString(sess *session.Session, key string) string {
+	val, _ := sess.Get(key)
+	sess.Delete(key)
+	s, _ := val.(string)
+	return s
+}
+
 func (h *Handler) authLogin(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
@@ -83,17 +90,9 @@ func (h *Handler) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storedStateAny, _ := sess.Get(sessionKeyOIDCState)
-	storedNonceAny, _ := sess.Get(sessionKeyOIDCNonce)
-	storedVerifierAny, _ := sess.Get(sessionKeyOIDCCodeVerifier)
-
-	sess.Delete(sessionKeyOIDCState)
-	sess.Delete(sessionKeyOIDCNonce)
-	sess.Delete(sessionKeyOIDCCodeVerifier)
-
-	storedState, _ := storedStateAny.(string)
-	storedNonce, _ := storedNonceAny.(string)
-	storedVerifier, _ := storedVerifierAny.(string)
+	storedState := popSessionString(sess, sessionKeyOIDCState)
+	storedNonce := popSessionString(sess, sessionKeyOIDCNonce)
+	storedVerifier := popSessionString(sess, sessionKeyOIDCCodeVerifier)
 
 	if storedState == "" || state != storedState {
 		logger.Warn("state mismatch or missing")
