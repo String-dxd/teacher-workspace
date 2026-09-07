@@ -25,7 +25,10 @@ import (
 	"github.com/String-sg/teacher-workspace/server/pkg/dotenv"
 )
 
-const shutdownTimeout = 30 * time.Second
+const (
+	oidcDiscoveryTimeout = 10 * time.Second
+	shutdownTimeout      = 30 * time.Second
+)
 
 func main() {
 	cfg := config.Default()
@@ -84,7 +87,9 @@ func main() {
 		Secure:           cfg.Env == config.EnvProduction,
 	})
 
-	rp, err := oidc.New(context.Background(), cfg.OIDC.IssuerURL.String(), cfg.OIDC.ClientID, cfg.OIDC.ClientSecret, cfg.OIDC.RedirectURL.String())
+	oidcCtx, oidcCancel := context.WithTimeout(context.Background(), oidcDiscoveryTimeout)
+	defer oidcCancel()
+	rp, err := oidc.New(oidcCtx, cfg.OIDC.IssuerURL.String(), cfg.OIDC.ClientID, cfg.OIDC.ClientSecret, cfg.OIDC.RedirectURL.String())
 	if err != nil {
 		slog.Warn("OIDC relying party unavailable, auth routes will return 503", "err", err)
 	}
