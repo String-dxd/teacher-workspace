@@ -17,6 +17,7 @@ func newTestOIDCServer(t *testing.T) *httptest.Server {
 	mux := http.NewServeMux()
 
 	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
 
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		base := srv.URL
@@ -44,7 +45,6 @@ func newTestOIDCServer(t *testing.T) *httptest.Server {
 func TestNew(t *testing.T) {
 	t.Run("discovers the provider and returns a configured RelyingParty", func(t *testing.T) {
 		srv := newTestOIDCServer(t)
-		defer srv.Close()
 
 		rp, err := oidc.New(t.Context(), srv.URL, "test-client-id", "test-client-secret", "http://localhost/callback")
 		if err != nil {
