@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -202,7 +203,7 @@ func TestHandler_authLogin(t *testing.T) {
 			t.Fatal("want: non-empty; got: empty")
 		}
 
-		u, err := (&http.Request{}).URL.Parse(loc)
+		u, err := url.Parse(loc)
 		if err != nil {
 			t.Fatalf("parse Location: %v", err)
 		}
@@ -255,7 +256,7 @@ func TestHandler_authLogin(t *testing.T) {
 		h.authLogin(rec, req)
 
 		loc := rec.Header().Get("Location")
-		u, err := (&http.Request{}).URL.Parse(loc)
+		u, err := url.Parse(loc)
 		if err != nil {
 			t.Fatalf("parse Location: %v", err)
 		}
@@ -299,7 +300,7 @@ func TestHandler_authLogin(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.authLogin(rec, req)
 
-			u, err := (&http.Request{}).URL.Parse(rec.Header().Get("Location"))
+			u, err := url.Parse(rec.Header().Get("Location"))
 			if err != nil {
 				t.Fatalf("parse Location: %v", err)
 			}
