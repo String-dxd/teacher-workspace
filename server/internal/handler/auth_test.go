@@ -25,8 +25,7 @@ func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 	t.Helper()
 
 	mux := http.NewServeMux()
-	var srv *httptest.Server
-	srv = httptest.NewServer(mux)
+	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
@@ -84,8 +83,7 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 	}
 
 	mux := http.NewServeMux()
-	var srv *httptest.Server
-	srv = httptest.NewServer(mux)
+	srv := httptest.NewServer(mux)
 	env.srv = srv
 	t.Cleanup(srv.Close)
 

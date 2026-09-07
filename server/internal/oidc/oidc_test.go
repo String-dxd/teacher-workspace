@@ -16,8 +16,7 @@ func newTestOIDCServer(t *testing.T) *httptest.Server {
 
 	mux := http.NewServeMux()
 
-	var srv *httptest.Server
-	srv = httptest.NewServer(mux)
+	srv := httptest.NewServer(mux)
 
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		base := srv.URL
