@@ -48,20 +48,20 @@ func TestNew(t *testing.T) {
 
 		rp, err := oidc.New(t.Context(), srv.URL, "test-client-id", "test-client-secret", "http://localhost/callback")
 		if err != nil {
-			t.Fatalf("New() returned unexpected error: %v", err)
+			t.Fatalf("oidc.New: %v", err)
 		}
 
-		if rp.OAuth2.ClientID != "test-client-id" {
-			t.Errorf("OAuth2.ClientID = %q, want %q", rp.OAuth2.ClientID, "test-client-id")
+		if want, got := "test-client-id", rp.OAuth2.ClientID; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
 		}
-		if rp.OAuth2.RedirectURL != "http://localhost/callback" {
-			t.Errorf("OAuth2.RedirectURL = %q, want %q", rp.OAuth2.RedirectURL, "http://localhost/callback")
+		if want, got := "http://localhost/callback", rp.OAuth2.RedirectURL; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
 		}
-		if rp.OAuth2.Endpoint.AuthStyle != oauth2.AuthStyleInParams {
-			t.Errorf("OAuth2.Endpoint.AuthStyle = %v, want AuthStyleInParams", rp.OAuth2.Endpoint.AuthStyle)
+		if want, got := oauth2.AuthStyleInParams, rp.OAuth2.Endpoint.AuthStyle; want != got {
+			t.Errorf("want: %v; got: %v", want, got)
 		}
-		if rp.Verifier == nil {
-			t.Error("Verifier is nil, want non-nil")
+		if got := rp.Verifier; got == nil {
+			t.Error("want: non-nil; got: nil")
 		}
 	})
 
