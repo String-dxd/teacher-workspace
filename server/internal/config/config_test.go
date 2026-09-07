@@ -75,20 +75,16 @@ func TestDefault(t *testing.T) {
 		if want, got := time.Minute, cfg.APIProxy.TokenTTL; want != got {
 			t.Errorf("want: %v; got: %v", want, got)
 		}
-
-		if want, got := "http://localhost:9000", cfg.OIDC.IssuerURL.String(); want != got {
-			t.Errorf("want: %q; got: %q", want, got)
-		}
-		if want, got := "teacher-workspace", cfg.OIDC.ClientID; want != got {
-			t.Errorf("want: %q; got: %q", want, got)
-		}
-		if want, got := "teacher-workspace-secret", cfg.OIDC.ClientSecret; want != got {
-			t.Errorf("want: %q; got: %q", want, got)
-		}
-		if want, got := "http://localhost:3000/auth/edupass/callback", cfg.OIDC.RedirectURL.String(); want != got {
-			t.Errorf("want: %q; got: %q", want, got)
-		}
 	})
+}
+
+func validOIDCConfig() OIDCConfig {
+	return OIDCConfig{
+		IssuerURL:    &url.URL{Scheme: "http", Host: "localhost:9000"},
+		ClientID:     "teacher-workspace",
+		ClientSecret: "teacher-workspace-secret",
+		RedirectURL:  &url.URL{Scheme: "http", Host: "localhost:3000", Path: "/auth/edupass/callback"},
+	}
 }
 
 func TestConfig_Validate(t *testing.T) {
@@ -96,6 +92,7 @@ func TestConfig_Validate(t *testing.T) {
 		for _, scheme := range []string{"http", "https"} {
 			t.Run(scheme, func(t *testing.T) {
 				cfg := Default()
+				cfg.OIDC = validOIDCConfig()
 				cfg.DevServerURL = &url.URL{Scheme: scheme, Host: "127.0.0.1:3001"}
 
 				if err := cfg.Validate(); err != nil {
@@ -107,6 +104,7 @@ func TestConfig_Validate(t *testing.T) {
 
 	t.Run("accepts production pointing at an existing build dir", func(t *testing.T) {
 		cfg := Default()
+		cfg.OIDC = validOIDCConfig()
 		cfg.Env = EnvProduction
 		cfg.BuildDir = t.TempDir()
 
@@ -176,6 +174,7 @@ func TestConfig_Validate(t *testing.T) {
 
 	t.Run("skips the dev server url outside development", func(t *testing.T) {
 		cfg := Default()
+		cfg.OIDC = validOIDCConfig()
 		cfg.Env = EnvProduction
 		cfg.BuildDir = t.TempDir()
 		cfg.DevServerURL = &url.URL{}
@@ -187,6 +186,7 @@ func TestConfig_Validate(t *testing.T) {
 
 	t.Run("skips the build dir outside production", func(t *testing.T) {
 		cfg := Default()
+		cfg.OIDC = validOIDCConfig()
 		cfg.BuildDir = "testdata/does-not-exist"
 
 		if err := cfg.Validate(); err != nil {
@@ -200,6 +200,7 @@ func TestConfig_Validate(t *testing.T) {
 		cfg.Server.Port = 0
 		cfg.Session.Name = ""
 		cfg.APIProxy.PostsBaseURL = nil
+		cfg.OIDC = validOIDCConfig()
 		cfg.OIDC.ClientID = ""
 
 		err := cfg.Validate()
@@ -602,7 +603,7 @@ func TestOIDCConfig_validate(t *testing.T) {
 	t.Run("accepts http and https urls", func(t *testing.T) {
 		for _, scheme := range []string{"http", "https"} {
 			t.Run(scheme, func(t *testing.T) {
-				cfg := Default().OIDC
+				cfg := validOIDCConfig()
 				cfg.IssuerURL = &url.URL{Scheme: scheme, Host: "localhost:9000"}
 				cfg.RedirectURL = &url.URL{Scheme: scheme, Host: "localhost:3000", Path: "/auth/edupass/callback"}
 
@@ -661,7 +662,7 @@ func TestOIDCConfig_validate(t *testing.T) {
 			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
-				cfg := Default().OIDC
+				cfg := validOIDCConfig()
 				tt.mutate(&cfg)
 
 				err := cfg.validate()
