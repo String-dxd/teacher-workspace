@@ -88,6 +88,83 @@ func TestRenderPlain(t *testing.T) {
 	})
 }
 
+func TestRenderHTML(t *testing.T) {
+	t.Run("sets Content-Type header", func(t *testing.T) {
+		logger := slog.New(slog.DiscardHandler)
+		rec := httptest.NewRecorder()
+
+		httputil.RenderHTML(rec, logger, http.StatusOK, []byte("<html></html>"))
+		res := rec.Result()
+
+		if want, got := "text/html; charset=UTF-8", res.Header.Get("Content-Type"); want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+
+	t.Run("sets X-Content-Type-Options header", func(t *testing.T) {
+		logger := slog.New(slog.DiscardHandler)
+		rec := httptest.NewRecorder()
+
+		httputil.RenderHTML(rec, logger, http.StatusOK, []byte("<html></html>"))
+		res := rec.Result()
+
+		if want, got := "nosniff", res.Header.Get("X-Content-Type-Options"); want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+
+	t.Run("responds with the expected status code", func(t *testing.T) {
+		logger := slog.New(slog.DiscardHandler)
+		rec := httptest.NewRecorder()
+
+		httputil.RenderHTML(rec, logger, http.StatusNotFound, []byte("<html></html>"))
+		res := rec.Result()
+
+		if want, got := 404, res.StatusCode; want != got {
+			t.Errorf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("responds with the expected body", func(t *testing.T) {
+		logger := slog.New(slog.DiscardHandler)
+		rec := httptest.NewRecorder()
+
+		httputil.RenderHTML(rec, logger, http.StatusOK, []byte("<html>Hello world!</html>"))
+
+		if want, got := "<html>Hello world!</html>", rec.Body.String(); want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+
+	t.Run("logs error message when it fails to write body", func(t *testing.T) {
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&logs, nil))
+		rec := httptest.NewRecorder()
+
+		httputil.RenderHTML(rec, logger, http.StatusNoContent, []byte("<html></html>"))
+
+		type logRecord struct {
+			Level    string `json:"level"`
+			Renderer string `json:"renderer"`
+			Err      string `json:"err"`
+		}
+		var lc logRecord
+		if err := json.Unmarshal(logs.Bytes(), &lc); err != nil {
+			t.Fatalf("decoding log output: %v", err)
+		}
+
+		if want, got := "ERROR", lc.Level; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+		if want, got := "html", lc.Renderer; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+		if want, got := "http: request method or response status code does not allow body", lc.Err; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+}
+
 func TestRenderJSON(t *testing.T) {
 	t.Run("sets Content-Type header", func(t *testing.T) {
 		logger := slog.New(slog.DiscardHandler)
