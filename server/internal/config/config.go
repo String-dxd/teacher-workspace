@@ -114,12 +114,6 @@ func Default() Config {
 			PostsSigningKey:           "a-string-secret-at-least-256-bits-long",
 			TokenTTL:                  1 * time.Minute,
 		},
-		OIDC: OIDCConfig{
-			IssuerURL:    must(url.Parse("http://localhost:9000")),
-			ClientID:     "teacher-workspace",
-			ClientSecret: "teacher-workspace-secret",
-			RedirectURL:  must(url.Parse("http://localhost:3000/auth/edupass/callback")),
-		},
 	}
 }
 
