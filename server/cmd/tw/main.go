@@ -86,8 +86,7 @@ func main() {
 
 	rp, err := oidc.New(context.Background(), cfg.OIDC.IssuerURL.String(), cfg.OIDC.ClientID, cfg.OIDC.ClientSecret, cfg.OIDC.RedirectURL.String())
 	if err != nil {
-		slog.Error("failed to initialize OIDC relying party", "err", err)
-		os.Exit(1)
+		slog.Warn("OIDC relying party unavailable, auth routes will return 503", "err", err)
 	}
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
