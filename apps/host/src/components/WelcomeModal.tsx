@@ -55,8 +55,8 @@ export function WelcomeModal() {
         />
 
         <div className="tw:flex tw:flex-col tw:gap-2">
-          <DialogTitle className="tw:flex tw:items-center tw:gap-2 tw:leading-snug tw:font-semibold">
-            Welcome to Teacher Workspace
+          <DialogTitle className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+            <span className="tw:leading-snug tw:font-semibold">Welcome to Teacher Workspace</span>
             <span className="tw:rounded-full tw:bg-[#eaf3ff] tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-primary">
               Beta
             </span>
