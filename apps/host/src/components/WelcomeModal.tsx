@@ -14,17 +14,11 @@ const WELCOME_MODAL_SEEN_KEY = 'tw_welcome_modal_seen';
 
 export function WelcomeModal() {
   const [open, setOpen] = useState(() => {
-    let isSeen: string | null;
     try {
-      isSeen = window.localStorage.getItem(WELCOME_MODAL_SEEN_KEY);
+      return window.localStorage.getItem(WELCOME_MODAL_SEEN_KEY) !== 'true';
     } catch {
       return false;
     }
-    if (isSeen === null) {
-      return true;
-    }
-
-    return isSeen === 'false';
   });
 
   const close = useCallback(() => {
