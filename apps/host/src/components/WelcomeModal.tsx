@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 
-const WELCOME_MODAL_SEEN_KEY = 'tw_is_welcome_modal_seen';
+const WELCOME_MODAL_SEEN_KEY = 'tw_welcome_modal_seen';
 
 export function WelcomeModal() {
   const [open, setOpen] = useState(() => {
