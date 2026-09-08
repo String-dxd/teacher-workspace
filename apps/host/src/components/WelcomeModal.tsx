@@ -62,15 +62,15 @@ export function WelcomeModal() {
             </span>
           </DialogTitle>
 
-          <DialogDescription className="tw:flex tw:flex-col tw:gap-2">
+          <DialogDescription className="tw:flex tw:flex-col tw:gap-2 tw:leading-relaxed">
             <span>
               One place for all your tools built for teachers, designed to save time and keep
               everything within reach.
             </span>
 
             <span>
-              Early access for selected teachers. Share your thoughts via the Help icon in the
-              sidebar.
+              Early access for selected teachers. Share your thoughts via the{' '}
+              <span className="tw:font-medium tw:text-foreground">Help</span> icon in the sidebar.
             </span>
           </DialogDescription>
         </div>
