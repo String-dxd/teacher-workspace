@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 import onboardingVideo from '~/assets/videos/video-onboarding.mp4';
 import { Button } from '~/components/ui/button';
@@ -21,14 +21,14 @@ export function WelcomeModal() {
     }
   });
 
-  const close = useCallback(() => {
+  const close = () => {
     setOpen(false);
     try {
       window.localStorage.setItem(WELCOME_MODAL_SEEN_KEY, 'true');
     } catch {
-      void 0;
+      return;
     }
-  }, []);
+  };
 
   return (
     <Dialog
