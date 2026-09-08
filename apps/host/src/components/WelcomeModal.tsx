@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import onboardingVideo from '~/assets/video-onboarding.mp4';
+import onboardingVideo from '~/assets/videos/video-onboarding.mp4';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
