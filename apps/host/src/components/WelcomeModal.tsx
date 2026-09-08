@@ -51,7 +51,7 @@ export function WelcomeModal() {
           muted
           playsInline
           preload="metadata"
-          className="tw:mx-auto tw:aspect-square tw:w-64 tw:rounded-2xl tw:bg-muted tw:object-cover"
+          className="tw:mx-auto tw:aspect-square tw:w-64 tw:rounded-2xl"
         />
 
         <div className="tw:flex tw:flex-col tw:gap-2">
