@@ -49,8 +49,11 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	switch h.cfg.Env {
 	case config.EnvDevelopment:
 		// Scripts, assets and the hot reload websocket must reach the dev
-		// server untouched; only a page load wants the templated shell.
-		if !strings.Contains(r.Header.Get("Accept"), httputil.MIMETextHTML) {
+		// server untouched, and so must a form submission: it accepts HTML but
+		// templating one would answer a GET the browser never made and drop
+		// the body it posted.
+		if (r.Method != http.MethodGet && r.Method != http.MethodHead) ||
+			!strings.Contains(r.Header.Get("Accept"), httputil.MIMETextHTML) {
 			h.devProxy.ServeHTTP(w, r)
 			return
 		}
