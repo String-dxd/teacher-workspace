@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,11 +22,8 @@ func TestNew(t *testing.T) {
 
 		_, err := New(&cfg)
 
-		if err == nil {
-			t.Fatal("want err: non-nil; got: nil")
-		}
-		if want := "read index.html"; !strings.Contains(err.Error(), want) {
-			t.Errorf("want err: containing %q; got: %q", want, err)
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("want err: %v; got: %v", fs.ErrNotExist, err)
 		}
 	})
 
@@ -43,7 +42,7 @@ func TestNew(t *testing.T) {
 		if err == nil {
 			t.Fatal("want err: non-nil; got: nil")
 		}
-		if want := "parse index.html"; !strings.Contains(err.Error(), want) {
+		if want := "parse template"; !strings.Contains(err.Error(), want) {
 			t.Errorf("want err: containing %q; got: %q", want, err)
 		}
 	})

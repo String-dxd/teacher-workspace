@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	stdhttputil "net/http/httputil"
-	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
+	"github.com/String-sg/teacher-workspace/server/internal/htmlutil"
 	"github.com/String-sg/teacher-workspace/server/internal/httputil"
 	"github.com/String-sg/teacher-workspace/server/internal/middleware"
 )
@@ -18,15 +17,14 @@ type Handler struct {
 	cfg *config.Config
 
 	devProxy             *stdhttputil.ReverseProxy
-	devClient            *http.Client
 	studentInsightsProxy *stdhttputil.ReverseProxy
 	postsProxy           *stdhttputil.ReverseProxy
 	assets               http.Handler
-	indexPage            []byte
+	executor             htmlutil.TemplateExecutor
 	runtime              runtimeConfig
 }
 
-// New creates a new Handler. In production it renders index.html once, so a
+// New creates a new Handler. In production it parses index.html once, so a
 // missing or malformed page fails here rather than on the first request.
 func New(cfg *config.Config) (*Handler, error) {
 	h := &Handler{
@@ -49,19 +47,15 @@ func New(cfg *config.Config) (*Handler, error) {
 	switch cfg.Env {
 	case config.EnvDevelopment:
 		h.devProxy = stdhttputil.NewSingleHostReverseProxy(cfg.DevServerURL)
-		h.devClient = &http.Client{Timeout: 10 * time.Second}
+		h.executor = htmlutil.NewDevelopmentTemplateExecutor(cfg.DevServerURL.String())
 	case config.EnvProduction:
 		h.assets = http.FileServer(http.Dir(cfg.BuildDir))
 
-		source, err := os.ReadFile(filepath.Join(cfg.BuildDir, "index.html"))
+		executor, err := htmlutil.NewProductionTemplateExecutor(filepath.Join(cfg.BuildDir, "index.html"))
 		if err != nil {
-			return nil, fmt.Errorf("read index.html: %w", err)
+			return nil, fmt.Errorf("index.html: %w", err)
 		}
-		page, err := renderIndex(source, h.runtime)
-		if err != nil {
-			return nil, err
-		}
-		h.indexPage = page
+		h.executor = executor
 	}
 
 	return h, nil

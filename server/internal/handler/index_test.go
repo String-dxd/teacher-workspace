@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
@@ -16,15 +15,11 @@ import (
 
 func TestHandler_index(t *testing.T) {
 	t.Run("templates the dev server page for a page load in development environment", func(t *testing.T) {
+		var devServerPath string
 		devServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Like rsbuild, only fall back to the page for a request that
-			// accepts HTML.
-			if !strings.Contains(r.Header.Get("Accept"), "text/html") {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
+			devServerPath = r.URL.Path
 			w.Header().Set(httputil.HeaderContentType, httputil.MIMETextHTMLCharsetUTF8)
-			_, _ = w.Write([]byte(`<html>` + r.URL.Path + `<script type="application/json" id="runtime-config">{{.}}</script></html>`))
+			_, _ = w.Write([]byte(`<html><head><script type="application/json" id="runtime-config">{{.}}</script></head><body><div id="root"></div></body></html>`))
 		}))
 		t.Cleanup(devServer.Close)
 
@@ -42,7 +37,7 @@ func TestHandler_index(t *testing.T) {
 			t.Fatalf("New: %v", err)
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+		req := httptest.NewRequest(http.MethodGet, "/dashboard?tab=posts", nil)
 		req.Header.Set("Accept", "text/html,application/xhtml+xml")
 		rec := httptest.NewRecorder()
 
@@ -51,11 +46,48 @@ func TestHandler_index(t *testing.T) {
 		if want, got := http.StatusOK, rec.Code; want != got {
 			t.Errorf("want: %d; got: %d", want, got)
 		}
-		if want, got := `<html>/dashboard<script type="application/json" id="runtime-config">{"remotes":[{"name":"pg","entry":"https://pg.test/mf-manifest.json"}]}</script></html>`, rec.Body.String(); want != got {
+		want := `<html><head><script type="application/json" id="runtime-config">{"remotes":[{"name":"pg","entry":"https://pg.test/mf-manifest.json"}]}</script></head><body><div id="root"></div></body></html>`
+		if got := rec.Body.String(); want != got {
 			t.Errorf("want: %q; got: %q", want, got)
 		}
 		if want, got := "no-store", rec.Header().Get("Cache-Control"); want != got {
 			t.Errorf("want: %q; got: %q", want, got)
+		}
+		// The dev server serves one page for every route, so the shell is
+		// always fetched from its root.
+		if want, got := "/", devServerPath; want != got {
+			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+
+	t.Run("answers 502 when the dev server page is not a valid template in development environment", func(t *testing.T) {
+		devServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set(httputil.HeaderContentType, httputil.MIMETextHTMLCharsetUTF8)
+			_, _ = w.Write([]byte(`<html>{{</html>`))
+		}))
+		t.Cleanup(devServer.Close)
+
+		devServerURL, err := url.Parse(devServer.URL)
+		if err != nil {
+			t.Fatalf("url.Parse: %v", err)
+		}
+
+		h, err := New(&config.Config{
+			Env:          config.EnvDevelopment,
+			DevServerURL: devServerURL,
+		})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Accept", "text/html")
+		rec := httptest.NewRecorder()
+
+		h.index(rec, req)
+
+		if want, got := http.StatusBadGateway, rec.Code; want != got {
+			t.Errorf("want: %d; got: %d", want, got)
 		}
 	})
 
@@ -112,9 +144,9 @@ func TestHandler_index(t *testing.T) {
 		}
 	})
 
-	t.Run("serves the page rendered at startup for all routes in production environment", func(t *testing.T) {
+	t.Run("serves the rendered page for all routes in production environment", func(t *testing.T) {
 		buildDir := t.TempDir()
-		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte(`<html><script type="application/json" id="runtime-config">{{.}}</script></html>`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte(`<html><head><script type="application/json" id="runtime-config">{{.}}</script></head><body><div id="root"></div></body></html>`), 0o644); err != nil {
 			t.Fatalf("os.WriteFile: %v", err)
 		}
 
@@ -138,7 +170,8 @@ func TestHandler_index(t *testing.T) {
 		if want, got := http.StatusOK, rec.Code; want != got {
 			t.Errorf("want: %d; got: %d", want, got)
 		}
-		if want, got := `<html><script type="application/json" id="runtime-config">{"remotes":[{"name":"pg","entry":"https://pg.test/mf-manifest.json"},{"name":"si","entry":"https://si.test/mf-manifest.json"}]}</script></html>`, rec.Body.String(); want != got {
+		want := `<html><head><script type="application/json" id="runtime-config">{"remotes":[{"name":"pg","entry":"https://pg.test/mf-manifest.json"},{"name":"si","entry":"https://si.test/mf-manifest.json"}]}</script></head><body><div id="root"></div></body></html>`
+		if got := rec.Body.String(); want != got {
 			t.Errorf("want: %q; got: %q", want, got)
 		}
 		if want, got := httputil.MIMETextHTMLCharsetUTF8, rec.Header().Get(httputil.HeaderContentType); want != got {
@@ -170,6 +203,30 @@ func TestHandler_index(t *testing.T) {
 
 		if want, got := `<script type="application/json" id="runtime-config">{"remotes":[]}</script>`, rec.Body.String(); want != got {
 			t.Errorf("want: %q; got: %q", want, got)
+		}
+	})
+
+	t.Run("answers 500 when the page cannot be rendered in production environment", func(t *testing.T) {
+		buildDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte(`<html>{{.Missing}}</html>`), 0o644); err != nil {
+			t.Fatalf("os.WriteFile: %v", err)
+		}
+
+		h, err := New(&config.Config{
+			Env:      config.EnvProduction,
+			BuildDir: buildDir,
+		})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+
+		h.index(rec, req)
+
+		if want, got := http.StatusInternalServerError, rec.Code; want != got {
+			t.Errorf("want: %d; got: %d", want, got)
 		}
 	})
 
