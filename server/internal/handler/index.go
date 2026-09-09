@@ -14,9 +14,33 @@ import (
 	"github.com/String-sg/teacher-workspace/server/internal/middleware"
 )
 
+// runtimeRemote is a Module Federation remote the frontend registers at startup.
+type runtimeRemote struct {
+	Name  string `json:"name"`
+	Entry string `json:"entry"`
+}
+
 // runtimeConfig is the document embedded in index.html for the frontend to read at startup.
 type runtimeConfig struct {
-	Remotes []config.Remote `json:"remotes"`
+	Remotes []runtimeRemote `json:"remotes"`
+}
+
+// newRuntimeConfig maps the configured manifest URLs to the remote names the
+// frontend loads modules from, leaving out the remotes that are not set.
+func newRuntimeConfig(cfg config.RemoteConfig) runtimeConfig {
+	// An empty array rather than null, so the client never has to guard
+	// against a missing list.
+	remotes := []runtimeRemote{}
+
+	// The pg remote exposes both the Posts and the Groups module.
+	if cfg.PostsManifestURL != "" {
+		remotes = append(remotes, runtimeRemote{Name: "pg", Entry: cfg.PostsManifestURL})
+	}
+	if cfg.StudentInsightsManifestURL != "" {
+		remotes = append(remotes, runtimeRemote{Name: "si", Entry: cfg.StudentInsightsManifestURL})
+	}
+
+	return runtimeConfig{Remotes: remotes}
 }
 
 // index serves the frontend's application shell with the runtime config
@@ -42,7 +66,7 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 			httputil.RenderPlain(w, logger, http.StatusBadGateway)
 			return
 		}
-		page, err = renderIndex(source, h.cfg.ParsedRemotes())
+		page, err = renderIndex(source, h.runtime)
 		if err != nil {
 			logger.Error("failed to render index.html", "err", err)
 			httputil.RenderPlain(w, logger, http.StatusInternalServerError)
@@ -100,21 +124,15 @@ func (h *Handler) fetchDevIndex(r *http.Request) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// renderIndex executes the index.html template with the remote list.
-func renderIndex(source []byte, remotes []config.Remote) ([]byte, error) {
+// renderIndex executes the index.html template with the runtime config.
+func renderIndex(source []byte, runtime runtimeConfig) ([]byte, error) {
 	tmpl, err := template.New("index.html").Parse(string(source))
 	if err != nil {
 		return nil, fmt.Errorf("parse index.html: %w", err)
 	}
 
-	// An empty array rather than null, so the client never has to guard
-	// against a missing list.
-	if remotes == nil {
-		remotes = []config.Remote{}
-	}
-
 	var page bytes.Buffer
-	if err := tmpl.Execute(&page, &runtimeConfig{Remotes: remotes}); err != nil {
+	if err := tmpl.Execute(&page, runtime); err != nil {
 		return nil, fmt.Errorf("render index.html: %w", err)
 	}
 

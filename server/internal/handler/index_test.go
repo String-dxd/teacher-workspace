@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
-			Remotes:      "pg=https://pg.test/mf-manifest.json",
+			Remote:       config.RemoteConfig{PostsManifestURL: "https://pg.test/mf-manifest.json"},
 		})
 		if err != nil {
 			t.Fatalf("New: %v", err)
@@ -120,7 +121,10 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:      config.EnvProduction,
 			BuildDir: buildDir,
-			Remotes:  "pg=https://pg.test/mf-manifest.json,si=https://si.test/mf-manifest.json",
+			Remote: config.RemoteConfig{
+				PostsManifestURL:           "https://pg.test/mf-manifest.json",
+				StudentInsightsManifestURL: "https://si.test/mf-manifest.json",
+			},
 		})
 		if err != nil {
 			t.Fatalf("New: %v", err)
@@ -266,6 +270,45 @@ func TestHandler_static(t *testing.T) {
 
 		if want, got := http.StatusNotFound, rec.Code; want != got {
 			t.Errorf("want: %d; got: %d", want, got)
+		}
+	})
+}
+
+func TestNewRuntimeConfig(t *testing.T) {
+	t.Run("maps posts to pg and student insights to si in order", func(t *testing.T) {
+		got := newRuntimeConfig(config.RemoteConfig{
+			PostsManifestURL:           "https://pg.test/mf-manifest.json",
+			StudentInsightsManifestURL: "https://si.test/mf-manifest.json",
+		})
+
+		want := []runtimeRemote{
+			{Name: "pg", Entry: "https://pg.test/mf-manifest.json"},
+			{Name: "si", Entry: "https://si.test/mf-manifest.json"},
+		}
+		if !slices.Equal(want, got.Remotes) {
+			t.Errorf("want: %v; got: %v", want, got.Remotes)
+		}
+	})
+
+	t.Run("skips a remote whose url is empty", func(t *testing.T) {
+		got := newRuntimeConfig(config.RemoteConfig{
+			StudentInsightsManifestURL: "https://si.test/mf-manifest.json",
+		})
+
+		want := []runtimeRemote{{Name: "si", Entry: "https://si.test/mf-manifest.json"}}
+		if !slices.Equal(want, got.Remotes) {
+			t.Errorf("want: %v; got: %v", want, got.Remotes)
+		}
+	})
+
+	t.Run("returns an empty slice rather than nil when nothing is configured", func(t *testing.T) {
+		got := newRuntimeConfig(config.RemoteConfig{})
+
+		if got.Remotes == nil {
+			t.Fatal("want: non-nil; got: nil")
+		}
+		if want := 0; want != len(got.Remotes) {
+			t.Errorf("want: %d; got: %d", want, len(got.Remotes))
 		}
 	})
 }

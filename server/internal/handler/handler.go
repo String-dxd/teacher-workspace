@@ -23,13 +23,15 @@ type Handler struct {
 	postsProxy           *stdhttputil.ReverseProxy
 	assets               http.Handler
 	indexPage            []byte
+	runtime              runtimeConfig
 }
 
 // New creates a new Handler. In production it renders index.html once, so a
 // missing or malformed page fails here rather than on the first request.
 func New(cfg *config.Config) (*Handler, error) {
 	h := &Handler{
-		cfg: cfg,
+		cfg:     cfg,
+		runtime: newRuntimeConfig(cfg.Remote),
 		studentInsightsProxy: &stdhttputil.ReverseProxy{
 			Rewrite: func(pr *stdhttputil.ProxyRequest) {
 				pr.SetURL(cfg.APIProxy.StudentInsightsBaseURL)
@@ -55,7 +57,7 @@ func New(cfg *config.Config) (*Handler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read index.html: %w", err)
 		}
-		page, err := renderIndex(source, cfg.ParsedRemotes())
+		page, err := renderIndex(source, h.runtime)
 		if err != nil {
 			return nil, err
 		}
