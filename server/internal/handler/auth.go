@@ -24,7 +24,7 @@ func popSessionString(sess *session.Session, key string) string {
 	return s
 }
 
-func (h *Handler) authLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) authEdupass(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
 	if h.rp == nil {
@@ -57,7 +57,7 @@ func (h *Handler) authLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-func (h *Handler) authCallback(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) authEdupassCallback(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
 	if h.rp == nil {

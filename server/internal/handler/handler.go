@@ -60,8 +60,8 @@ func (h *Handler) Register(mux *http.ServeMux, session middleware.Middleware) {
 	// Session-scoped routes: everything registered on this sub-mux runs
 	// through the session middleware, which is applied a single time.
 	app := http.NewServeMux()
-	app.HandleFunc("GET /auth/edupass", h.authLogin)
-	app.HandleFunc("GET /auth/edupass/callback", h.authCallback)
+	app.HandleFunc("GET /auth/edupass", h.authEdupass)
+	app.HandleFunc("GET /auth/edupass/callback", h.authEdupassCallback)
 	app.HandleFunc("/", h.index)
 
 	app.HandleFunc("/api/{app}/", h.proxy)

@@ -167,7 +167,7 @@ func newSessionWithOIDC(state, nonce, codeVerifier string) *session.Session {
 	return sess
 }
 
-func TestHandler_authLogin(t *testing.T) {
+func TestHandler_authEdupass(t *testing.T) {
 	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
 		cfg := config.Default()
 		h := New(&cfg, nil)
@@ -177,7 +177,7 @@ func TestHandler_authLogin(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		h.authLogin(rec, req)
+		h.authEdupass(rec, req)
 
 		if want, got := http.StatusServiceUnavailable, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -192,7 +192,7 @@ func TestHandler_authLogin(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		h.authLogin(rec, req)
+		h.authEdupass(rec, req)
 
 		if want, got := http.StatusFound, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -253,7 +253,7 @@ func TestHandler_authLogin(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		h.authLogin(rec, req)
+		h.authEdupass(rec, req)
 
 		loc := rec.Header().Get("Location")
 		u, err := url.Parse(loc)
@@ -298,7 +298,7 @@ func TestHandler_authLogin(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/auth/edupass", nil)
 			req = req.WithContext(middleware.WithSession(req.Context(), sess))
 			rec := httptest.NewRecorder()
-			h.authLogin(rec, req)
+			h.authEdupass(rec, req)
 
 			u, err := url.Parse(rec.Header().Get("Location"))
 			if err != nil {
@@ -323,7 +323,7 @@ func TestHandler_authLogin(t *testing.T) {
 	})
 }
 
-func TestHandler_authCallback(t *testing.T) {
+func TestHandler_authEdupassCallback(t *testing.T) {
 	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
 		cfg := config.Default()
 		h := New(&cfg, nil)
@@ -333,7 +333,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		h.authCallback(rec, req)
+		h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusServiceUnavailable, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -353,7 +353,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusSeeOther, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -377,7 +377,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -396,7 +396,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -411,7 +411,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -427,7 +427,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusBadRequest, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -442,7 +442,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -461,7 +461,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -480,7 +480,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
@@ -500,7 +500,7 @@ func TestHandler_authCallback(t *testing.T) {
 		req = req.WithContext(middleware.WithSession(req.Context(), sess))
 		rec := httptest.NewRecorder()
 
-		env.h.authCallback(rec, req)
+		env.h.authEdupassCallback(rec, req)
 
 		if want, got := http.StatusForbidden, rec.Code; want != got {
 			t.Fatalf("want: %d; got: %d", want, got)
