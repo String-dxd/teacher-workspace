@@ -22,6 +22,9 @@ function readRuntimeConfig(): RuntimeConfig {
     const config = (JSON.parse(source) ?? {}) as Partial<RuntimeConfig>;
     return { remotes: config.remotes ?? [] };
   } catch (error: unknown) {
+    // The shell has no logger of its own, so the console is where a page served
+    // without the block, such as one loaded straight from the dev server, shows up.
+    // oxlint-disable-next-line no-console
     console.error('Could not read the runtime config from the page; no remotes registered', error);
     return { remotes: [] };
   }
