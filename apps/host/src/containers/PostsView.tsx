@@ -2,7 +2,7 @@ import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime
 import React from 'react';
 
 import { ErrorBoundary } from '~/components/ErrorBoundary';
-import { RemoteLoadFallback } from '~/components/RemoteLoadFallback';
+import { RemoteLoadFallback } from '~/containers/RemoteLoadFallback';
 
 registerRemotes([
   {
