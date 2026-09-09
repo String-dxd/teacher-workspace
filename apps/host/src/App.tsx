@@ -1,34 +1,81 @@
-import { lazy, Suspense } from 'react';
+import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
+import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 
+import { ErrorBoundary } from '~/components/ErrorBoundary';
 import { Toaster } from '~/components/ui/toast';
 import { TooltipProvider } from '~/components/ui/tooltip';
-import { LoginView } from '~/containers/LoginView';
 import { NotFoundView } from '~/containers/NotFoundView';
 
-const RootLayout = lazy(() => import('~/containers/RootLayout'));
-const HomeView = lazy(() => import('~/containers/HomeView'));
-const StudentsView = lazy(() => import('~/containers/StudentsView'));
-const PostsView = lazy(() => import('~/containers/PostsView'));
-const GroupsView = lazy(() => import('~/containers/GroupsView'));
+registerRemotes([
+  {
+    name: 'pg',
+    entry: 'https://d390008ekba73v.cloudfront.net/mf-manifest.json',
+  },
+]);
+
+const LoginView = React.lazy(() => import('~/containers/LoginView'));
+const RootLayout = React.lazy(() => import('~/containers/RootLayout'));
+const HomeView = React.lazy(() => import('~/containers/HomeView'));
+const StudentsView = React.lazy(() => import('~/containers/StudentsView'));
+const RemoteLoadFallbackView = React.lazy(() => import('~/containers/RemoteLoadFallbackView'));
+
+const RemotePostsView = React.lazy(async () => {
+  const module = await loadRemote<{ default: React.ComponentType }>('pg/Posts');
+  if (!module) {
+    throw new Error('Failed to load remote module');
+  }
+
+  return module;
+});
+
+const RemoteGroupsView = React.lazy(async () => {
+  const module = await loadRemote<{ default: React.ComponentType }>('pg/Groups');
+  if (!module) {
+    throw new Error('Failed to load remote module');
+  }
+
+  return module;
+});
 
 export default function App() {
   return (
     <BrowserRouter>
       <TooltipProvider>
         <Toaster />
-        <Suspense fallback={null}>
-          <Routes>
-            <Route path="/login" element={<LoginView />} />
-            <Route element={<RootLayout />}>
-              <Route path="/" element={<HomeView />} />
-              <Route path="/students/*" element={<StudentsView />} />
-              <Route path="/posts/*" element={<PostsView />} />
-              <Route path="/groups/*" element={<GroupsView />} />
-              <Route path="*" element={<NotFoundView />} />
-            </Route>
-          </Routes>
-        </Suspense>
+
+        <Routes>
+          <Route path="/login" element={<LoginView />} />
+          <Route element={<RootLayout />}>
+            <Route path="/" element={<HomeView />} />
+            <Route path="/students/*" element={<StudentsView />} />
+            <Route
+              path="/posts/*"
+              element={
+                <ErrorBoundary
+                  fallback={<RemoteLoadFallbackView onRetry={() => window.location.reload()} />}
+                >
+                  <React.Suspense fallback={null}>
+                    <RemotePostsView />
+                  </React.Suspense>
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/groups/*"
+              element={
+                <ErrorBoundary
+                  fallback={<RemoteLoadFallbackView onRetry={() => window.location.reload()} />}
+                >
+                  <React.Suspense fallback={null}>
+                    <RemoteGroupsView />
+                  </React.Suspense>
+                </ErrorBoundary>
+              }
+            />
+            <Route path="*" element={<NotFoundView />} />
+          </Route>
+        </Routes>
       </TooltipProvider>
     </BrowserRouter>
   );

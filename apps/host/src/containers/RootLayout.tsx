@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router';
 
 import { AppSidebar } from '~/components/Sidebar';
@@ -12,9 +12,9 @@ export default function RootLayout() {
         <header className="tw:flex tw:h-14 tw:items-center tw:px-4 tw:md:hidden">
           <SidebarTrigger />
         </header>
-        <Suspense fallback={null}>
+        <React.Suspense fallback={null}>
           <Outlet />
-        </Suspense>
+        </React.Suspense>
       </SidebarInset>
     </SidebarProvider>
   );
