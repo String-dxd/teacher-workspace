@@ -127,7 +127,7 @@ Work happens on short-lived feature branches off `main`. Open a pull request bac
 
 ### Branch naming
 
-Use the format `<type>/<short-description>`, where `<type>` is one of the [Commit Conventions](#commit-conventions) types: `feat`, `fix`, `docs`, `refactor` (non-behavioral changes), `test`, `chore` (tooling, config, dependencies).
+Use the format `<type>/<short-description>`, where `<type>` is one of the [Commit Conventions](#commit-conventions) types: `feat`, `fix`, `docs`, `refactor` (non-behavioral changes), `test`, `chore` (tooling, config, dependencies), `release` (a version bump, branched as `release/vX.Y.Z`).
 
 Examples: `feat/session-middleware`, `fix/server-startup-race`, `docs/contributing-guide`.
 
@@ -223,7 +223,7 @@ No conventions documented yet.
 ## Commit Conventions
 
 - **Single summary line by default.** Details belong in the PR description. Add a body only when the reason isn't recoverable from the diff: why a version is pinned, why a workaround exists, why the obvious approach didn't work.
-- **Conventional commit format:** `<type>(<scope>): <message>` or `<type>: <message>`. Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`. When used, scope identifies the file or package being changed.
+- **Conventional commit format:** `<type>(<scope>): <message>` or `<type>: <message>`. Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `release`. When used, scope identifies the file or package being changed. `release` takes no scope and its message is the version alone: `release: vX.Y.Z`, which the release workflow matches exactly.
 - **Backtick file and variable names**, including in the scope.
 - **Be specific but high-level.** Name what changed, not vague descriptions, and not individual functions.
 - **Make logical, incremental commits.** Each commit should represent a coherent change.
