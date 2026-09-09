@@ -2,7 +2,7 @@ import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime
 import React from 'react';
 
 import { ErrorBoundary } from '~/components/ErrorBoundary';
-import { RemoteLoadFallback } from '~/containers/RemoteLoadFallback';
+import { RemoteLoadFallbackView } from '~/containers/RemoteLoadFallbackView';
 
 registerRemotes([
   {
@@ -23,7 +23,7 @@ const RemoteApp = React.lazy(async () => {
 
 export default function GroupsView() {
   return (
-    <ErrorBoundary fallback={<RemoteLoadFallback onRetry={() => window.location.reload()} />}>
+    <ErrorBoundary fallback={<RemoteLoadFallbackView onRetry={() => window.location.reload()} />}>
       <React.Suspense fallback={null}>
         <RemoteApp />
       </React.Suspense>
