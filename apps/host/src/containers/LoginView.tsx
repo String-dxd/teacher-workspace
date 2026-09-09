@@ -5,7 +5,7 @@ import TeacherIllustration from '~/assets/images/teacher-illustration.png';
 import { Button } from '~/components/ui/button';
 import { toast } from '~/components/ui/toast';
 
-export function LoginView() {
+export default function LoginView() {
   const [searchParams] = useSearchParams();
   const errorParam = searchParams.get('error');
   const showError = errorParam === 'oauth2_failed' || errorParam === 'oauth2_callback_failed';

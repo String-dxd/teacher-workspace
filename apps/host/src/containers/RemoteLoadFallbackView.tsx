@@ -7,7 +7,7 @@ export interface RemoteLoadFallbackViewProps {
   onRetry: () => void;
 }
 
-export function RemoteLoadFallbackView({ onRetry }: RemoteLoadFallbackViewProps) {
+export default function RemoteLoadFallbackView({ onRetry }: RemoteLoadFallbackViewProps) {
   return (
     <div className="tw:flex tw:flex-1 tw:flex-col tw:items-center tw:justify-center tw:gap-6 tw:p-8 tw:text-center">
       <img src={illustration} alt="" className="tw:size-64" />
