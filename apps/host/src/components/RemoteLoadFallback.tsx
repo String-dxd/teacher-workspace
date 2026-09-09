@@ -20,10 +20,8 @@ export function RemoteLoadFallback({ onRetry }: RemoteLoadFallbackProps) {
         </p>
       </div>
       <div className="tw:flex tw:gap-3">
-        <Button onClick={onRetry} className="tw:h-9">
-          Try again
-        </Button>
-        <Button variant="outline" className="tw:h-9" nativeButton={false} render={<Link to="/" />}>
+        <Button onClick={onRetry}>Try again</Button>
+        <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
           Back to home
         </Button>
       </div>

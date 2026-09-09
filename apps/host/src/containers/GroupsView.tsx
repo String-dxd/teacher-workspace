@@ -21,13 +21,9 @@ const RemoteApp = React.lazy(async () => {
   return module;
 });
 
-function Fallback() {
-  return <RemoteLoadFallback onRetry={() => window.location.reload()} />;
-}
-
 export default function GroupsView() {
   return (
-    <ErrorBoundary fallback={<Fallback />}>
+    <ErrorBoundary fallback={<RemoteLoadFallback onRetry={() => window.location.reload()} />}>
       <React.Suspense fallback={null}>
         <RemoteApp />
       </React.Suspense>
