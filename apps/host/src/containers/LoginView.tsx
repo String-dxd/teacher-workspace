@@ -7,12 +7,13 @@ import { toast } from '~/components/ui/toast';
 
 export function LoginView() {
   const [searchParams] = useSearchParams();
-  const showError = searchParams.get('error') === 'oauth2_callback_failed';
+  const errorParam = searchParams.get('error');
+  const showError = errorParam === 'oauth2_failed' || errorParam === 'oauth2_callback_failed';
 
   useEffect(() => {
     if (!showError) return;
 
-    const id = 'oauth2-callback-failed';
+    const id = 'oauth2-sign-in-failed';
 
     toast.add({
       id,
@@ -42,7 +43,8 @@ export function LoginView() {
 
             <Button
               render={<a href="/auth/edupass" />}
-              className="tw:mt-6 tw:h-9 tw:w-full tw:text-white"
+              nativeButton={false}
+              className="tw:mt-6 tw:w-full tw:text-white"
             >
               Sign in with Edupass
             </Button>
