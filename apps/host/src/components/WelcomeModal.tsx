@@ -69,7 +69,7 @@ export function WelcomeModal() {
             </span>
 
             <span>
-              Early access for selected teachers. Share your thoughts via the{' '}
+              Early access for selected teachers. Share your thoughts via the&nbsp;
               <span className="tw:font-medium tw:text-foreground">Help</span> icon in the sidebar.
             </span>
           </DialogDescription>
