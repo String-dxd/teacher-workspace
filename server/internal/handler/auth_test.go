@@ -61,7 +61,10 @@ func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 	}
 
 	cfg := config.Default()
-	h := New(&cfg, rp)
+	h, err := New(&cfg, rp)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	return h, srv
 }
 
@@ -155,7 +158,11 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 	}
 
 	cfg := config.Default()
-	env.h = New(&cfg, rp)
+	h, err := New(&cfg, rp)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	env.h = h
 	return env
 }
 
@@ -170,7 +177,10 @@ func newSessionWithOIDC(state, nonce, codeVerifier string) *session.Session {
 func TestHandler_authEdupass(t *testing.T) {
 	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
 		cfg := config.Default()
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		sess := session.New()
 		req := httptest.NewRequest(http.MethodGet, "/auth/edupass", nil)
@@ -326,7 +336,10 @@ func TestHandler_authEdupass(t *testing.T) {
 func TestHandler_authEdupassCallback(t *testing.T) {
 	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
 		cfg := config.Default()
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		sess := session.New()
 		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state=test-state", nil)
