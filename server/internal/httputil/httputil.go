@@ -36,6 +36,19 @@ func RenderPlain(w http.ResponseWriter, logger *slog.Logger, status int) {
 	}
 }
 
+// RenderHTML writes an HTML response with the given status code and body. Write
+// failures are logged using the provided logger.
+func RenderHTML(w http.ResponseWriter, logger *slog.Logger, status int, body []byte) {
+	w.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
+	w.Header().Set(HeaderXContentTypeOptions, "nosniff")
+
+	w.WriteHeader(status)
+
+	if _, err := w.Write(body); err != nil {
+		logger.Error("failed to write response body", "renderer", "html", "err", err)
+	}
+}
+
 // RenderJSON writes a JSON response with the given status code and value. Write
 // failures are logged using the provided logger.
 func RenderJSON(w http.ResponseWriter, logger *slog.Logger, status int, v any) {

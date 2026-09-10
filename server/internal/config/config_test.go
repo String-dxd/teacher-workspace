@@ -25,6 +25,13 @@ func TestDefault(t *testing.T) {
 			t.Errorf("want: %q; got: %q", want, got)
 		}
 
+		if got := cfg.Remote.PostsManifestURL; got != "" {
+			t.Errorf("want: empty; got: %q", got)
+		}
+		if got := cfg.Remote.StudentInsightsManifestURL; got != "" {
+			t.Errorf("want: empty; got: %q", got)
+		}
+
 		if want, got := 3000, cfg.Server.Port; want != got {
 			t.Errorf("want: %d; got: %d", want, got)
 		}
@@ -155,6 +162,11 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				want: `TW_BUILD_DIR does not exist: "testdata/does-not-exist"`,
 			},
+			{
+				name:   "remote manifest url with a non-http scheme",
+				mutate: func(c *Config) { c.Remote.PostsManifestURL = "ftp://pg.test/mf-manifest.json" },
+				want:   `TW_REMOTE_POSTS_MURL must use scheme http or https; got "ftp://pg.test/mf-manifest.json"`,
+			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				cfg := Default()
@@ -197,6 +209,7 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("reports multiple invalid fields in one error", func(t *testing.T) {
 		cfg := Default()
 		cfg.Env = "staging"
+		cfg.Remote.PostsManifestURL = "ftp://pg.test/mf-manifest.json"
 		cfg.Server.Port = 0
 		cfg.Session.Name = ""
 		cfg.APIProxy.PostsBaseURL = nil
@@ -208,7 +221,7 @@ func TestConfig_Validate(t *testing.T) {
 		if err == nil {
 			t.Fatal("want err: non-nil; got: nil")
 		}
-		for _, want := range []string{"TW_ENV", "TW_SERVER_PORT", "TW_SESSION_NAME", "TW_API_PROXY_POSTS_BASE_URL", "TW_OIDC_CLIENT_ID"} {
+		for _, want := range []string{"TW_ENV", "TW_REMOTE_POSTS_MURL", "TW_SERVER_PORT", "TW_SESSION_NAME", "TW_API_PROXY_POSTS_BASE_URL", "TW_OIDC_CLIENT_ID"} {
 			if !strings.Contains(err.Error(), want) {
 				t.Errorf("want err: containing %q; got: %q", want, err)
 			}
@@ -613,6 +626,30 @@ func TestOIDCConfig_validate(t *testing.T) {
 			})
 		}
 	})
+}
+func TestRemoteConfig_validate(t *testing.T) {
+	t.Run("accepts empty manifest urls", func(t *testing.T) {
+		cfg := RemoteConfig{}
+
+		if err := cfg.validate(); err != nil {
+			t.Errorf("want err: nil; got: %v", err)
+		}
+	})
+
+	t.Run("accepts http and https manifest urls", func(t *testing.T) {
+		for _, scheme := range []string{"http", "https"} {
+			t.Run(scheme, func(t *testing.T) {
+				cfg := RemoteConfig{
+					PostsManifestURL:           scheme + "://pg.test/mf-manifest.json",
+					StudentInsightsManifestURL: scheme + "://si.test/mf-manifest.json",
+				}
+
+				if err := cfg.validate(); err != nil {
+					t.Errorf("want err: nil; got: %v", err)
+				}
+			})
+		}
+	})
 
 	t.Run("rejects invalid values", func(t *testing.T) {
 		for _, tt := range []struct {
@@ -674,6 +711,80 @@ func TestOIDCConfig_validate(t *testing.T) {
 					t.Errorf("want err: containing %q; got: %q", tt.want, err)
 				}
 			})
+		}
+	})
+
+	t.Run("rejects invalid values", func(t *testing.T) {
+		for _, tt := range []struct {
+			name   string
+			mutate func(*RemoteConfig)
+			want   string
+		}{
+			{
+				name:   "unparseable posts url",
+				mutate: func(c *RemoteConfig) { c.PostsManifestURL = "http://bad host/mf-manifest.json" },
+				want:   `TW_REMOTE_POSTS_MURL must be a valid url; got "http://bad host/mf-manifest.json"`,
+			},
+			{
+				name:   "posts url with a non-http scheme",
+				mutate: func(c *RemoteConfig) { c.PostsManifestURL = "ftp://pg.test/mf-manifest.json" },
+				want:   `TW_REMOTE_POSTS_MURL must use scheme http or https; got "ftp://pg.test/mf-manifest.json"`,
+			},
+			{
+				name:   "posts url without a host",
+				mutate: func(c *RemoteConfig) { c.PostsManifestURL = "https:///mf-manifest.json" },
+				want:   `TW_REMOTE_POSTS_MURL must include host[:port]; got "https:///mf-manifest.json"`,
+			},
+			{
+				name:   "unparseable student insights url",
+				mutate: func(c *RemoteConfig) { c.StudentInsightsManifestURL = "http://bad host/mf-manifest.json" },
+				want:   `TW_REMOTE_STUDENT_INSIGHTS_MURL must be a valid url; got "http://bad host/mf-manifest.json"`,
+			},
+			{
+				name:   "student insights url with a non-http scheme",
+				mutate: func(c *RemoteConfig) { c.StudentInsightsManifestURL = "ftp://si.test/mf-manifest.json" },
+				want:   `TW_REMOTE_STUDENT_INSIGHTS_MURL must use scheme http or https; got "ftp://si.test/mf-manifest.json"`,
+			},
+			{
+				name:   "student insights url without a host",
+				mutate: func(c *RemoteConfig) { c.StudentInsightsManifestURL = "https:///mf-manifest.json" },
+				want:   `TW_REMOTE_STUDENT_INSIGHTS_MURL must include host[:port]; got "https:///mf-manifest.json"`,
+			},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				cfg := RemoteConfig{
+					PostsManifestURL:           "https://pg.test/mf-manifest.json",
+					StudentInsightsManifestURL: "https://si.test/mf-manifest.json",
+				}
+				tt.mutate(&cfg)
+
+				err := cfg.validate()
+
+				if err == nil {
+					t.Fatal("want err: non-nil; got: nil")
+				}
+				if !strings.Contains(err.Error(), tt.want) {
+					t.Errorf("want err: containing %q; got: %q", tt.want, err)
+				}
+			})
+		}
+	})
+
+	t.Run("reports both invalid manifest urls in one error", func(t *testing.T) {
+		cfg := RemoteConfig{
+			PostsManifestURL:           "ftp://pg.test/mf-manifest.json",
+			StudentInsightsManifestURL: "https:///mf-manifest.json",
+		}
+
+		err := cfg.validate()
+
+		if err == nil {
+			t.Fatal("want err: non-nil; got: nil")
+		}
+		for _, want := range []string{"TW_REMOTE_POSTS_MURL", "TW_REMOTE_STUDENT_INSIGHTS_MURL"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("want err: containing %q; got: %q", want, err)
+			}
 		}
 	})
 }

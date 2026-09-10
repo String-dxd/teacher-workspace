@@ -43,7 +43,10 @@ func TestHandler_proxy(t *testing.T) {
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 		cfg.APIProxy.StudentInsightsBaseURL = studentInsightsBackendURL
 
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		tests := []struct {
 			name string
@@ -100,7 +103,10 @@ func TestHandler_proxy(t *testing.T) {
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 		cfg.APIProxy.StudentInsightsBaseURL = studentInsightsBackendURL
 
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/unknown-app/hello", nil)
 		req.SetPathValue("app", "unknown-app")
@@ -128,7 +134,10 @@ func TestHandler_proxy(t *testing.T) {
 		cfg := config.Default()
 		cfg.APIProxy.PostsBaseURL = backendURL
 
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/posts/hello", nil)
 		req.SetPathValue("app", "posts")
@@ -158,7 +167,10 @@ func TestHandler_proxy(t *testing.T) {
 		cfg := config.Default()
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/posts/hello", nil)
 		req.SetPathValue("app", "posts")
@@ -203,7 +215,10 @@ func TestHandler_proxy(t *testing.T) {
 		ttl := 2 * time.Minute
 		cfg.APIProxy.TokenTTL = ttl
 
-		h := New(&cfg, nil)
+		h, err := New(&cfg, nil)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		currentTime := time.Now()
 		tests := []struct {
