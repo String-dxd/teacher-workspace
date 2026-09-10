@@ -1,4 +1,4 @@
-import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
+import { loadRemote } from '@module-federation/enhanced/runtime';
 import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 
@@ -6,13 +6,6 @@ import { ErrorBoundary } from '~/components/ErrorBoundary';
 import { Toaster } from '~/components/ui/toast';
 import { TooltipProvider } from '~/components/ui/tooltip';
 import { NotFoundView } from '~/containers/NotFoundView';
-
-registerRemotes([
-  {
-    name: 'pg',
-    entry: 'https://d390008ekba73v.cloudfront.net/mf-manifest.json',
-  },
-]);
 
 const LoginView = React.lazy(() => import('~/containers/LoginView'));
 const RootLayout = React.lazy(() => import('~/containers/RootLayout'));

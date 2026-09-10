@@ -31,6 +31,16 @@ type Config struct {
 	Server   ServerConfig   `dotenv:",squash"`
 	Session  SessionConfig  `dotenv:",squash"`
 	APIProxy APIProxyConfig `dotenv:",squash"`
+	Remote   RemoteConfig   `dotenv:",squash"`
+}
+
+// RemoteConfig holds the Module Federation remotes the host registers at
+// runtime. An empty URL means that remote is not registered.
+type RemoteConfig struct {
+	// PostsManifestURL is the mf-manifest.json URL of the Posts and Groups remote.
+	PostsManifestURL string `dotenv:"TW_REMOTE_POSTS_MURL"`
+	// StudentInsightsManifestURL is the mf-manifest.json URL of the Student Insights remote.
+	StudentInsightsManifestURL string `dotenv:"TW_REMOTE_STUDENT_INSIGHTS_MURL"`
 }
 
 // ServerConfig represents the configuration for the HTTP server.
@@ -136,7 +146,7 @@ func (c Config) Validate() error {
 		}
 	}
 
-	return errors.Join(append(errs, c.Server.validate(), c.Session.validate(), c.APIProxy.validate())...)
+	return errors.Join(append(errs, c.Server.validate(), c.Session.validate(), c.APIProxy.validate(), c.Remote.validate())...)
 }
 
 func (c ServerConfig) validate() error {
@@ -262,6 +272,32 @@ func (c APIProxyConfig) validate() error {
 	}
 	if c.TokenTTL < time.Second {
 		errs = append(errs, fmt.Errorf("TW_API_PROXY_TOKEN_TTL must be at least 1s; got %v", c.TokenTTL))
+	}
+
+	return errors.Join(errs...)
+}
+
+func (c RemoteConfig) validate() error {
+	var errs []error
+
+	for _, remote := range []struct{ name, value string }{
+		{name: "TW_REMOTE_POSTS_MURL", value: c.PostsManifestURL},
+		{name: "TW_REMOTE_STUDENT_INSIGHTS_MURL", value: c.StudentInsightsManifestURL},
+	} {
+		// An unset remote is not registered, so only a value is checked.
+		if remote.value == "" {
+			continue
+		}
+
+		u, err := url.Parse(remote.value)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("%s must be a valid url; got %q", remote.name, remote.value))
+		case u.Scheme != "http" && u.Scheme != "https":
+			errs = append(errs, fmt.Errorf("%s must use scheme http or https; got %q", remote.name, remote.value))
+		case u.Host == "":
+			errs = append(errs, fmt.Errorf("%s must include host[:port]; got %q", remote.name, remote.value))
+		}
 	}
 
 	return errors.Join(errs...)

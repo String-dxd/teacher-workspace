@@ -1,15 +1,52 @@
 package handler
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
 )
+
+func TestNew(t *testing.T) {
+	t.Run("fails when index.html is missing in production environment", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.Env = config.EnvProduction
+		cfg.BuildDir = t.TempDir()
+
+		_, err := New(&cfg)
+
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("want err: %v; got: %v", fs.ErrNotExist, err)
+		}
+	})
+
+	t.Run("fails when index.html is not a valid template in production environment", func(t *testing.T) {
+		buildDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html>{{</html>"), 0o644); err != nil {
+			t.Fatalf("os.WriteFile: %v", err)
+		}
+
+		cfg := config.Default()
+		cfg.Env = config.EnvProduction
+		cfg.BuildDir = buildDir
+
+		_, err := New(&cfg)
+
+		if err == nil {
+			t.Fatal("want err: non-nil; got: nil")
+		}
+		if want := "parse template"; !strings.Contains(err.Error(), want) {
+			t.Errorf("want err: containing %q; got: %q", want, err)
+		}
+	})
+}
 
 func TestHandler_Register(t *testing.T) {
 	t.Run("routes to the handler matching the request path", func(t *testing.T) {
@@ -39,7 +76,10 @@ func TestHandler_Register(t *testing.T) {
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h := New(&cfg)
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		mux := http.NewServeMux()
 		h.Register(mux, func(next http.Handler) http.Handler { return next })
@@ -92,7 +132,10 @@ func TestHandler_Register(t *testing.T) {
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h := New(&cfg)
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		tests := []struct {
 			name   string
@@ -137,12 +180,18 @@ func TestHandler_Register(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(buildDir, "static", "js", "index.abc123.js"), []byte("console.log('Hello world!');"), 0o644); err != nil {
 			t.Fatalf("os.WriteFile: %v", err)
 		}
+		if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html>Hello world!</html>"), 0o644); err != nil {
+			t.Fatalf("os.WriteFile: %v", err)
+		}
 
 		cfg := config.Default()
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = buildDir
 
-		h := New(&cfg)
+		h, err := New(&cfg)
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
 
 		var calls int
 

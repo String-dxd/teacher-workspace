@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	stdhttputil "net/http/httputil"
+	"path/filepath"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
+	"github.com/String-sg/teacher-workspace/server/internal/htmlutil"
 	"github.com/String-sg/teacher-workspace/server/internal/httputil"
 	"github.com/String-sg/teacher-workspace/server/internal/middleware"
 )
@@ -17,12 +20,16 @@ type Handler struct {
 	studentInsightsProxy *stdhttputil.ReverseProxy
 	postsProxy           *stdhttputil.ReverseProxy
 	assets               http.Handler
+	executor             htmlutil.TemplateExecutor
+	runtime              runtimeConfig
 }
 
-// New creates a new Handler.
-func New(cfg *config.Config) *Handler {
+// New creates a new Handler. In production it parses index.html once, so a
+// missing or malformed page fails here rather than on the first request.
+func New(cfg *config.Config) (*Handler, error) {
 	h := &Handler{
-		cfg: cfg,
+		cfg:     cfg,
+		runtime: newRuntimeConfig(cfg.Remote),
 		studentInsightsProxy: &stdhttputil.ReverseProxy{
 			Rewrite: func(pr *stdhttputil.ProxyRequest) {
 				pr.SetURL(cfg.APIProxy.StudentInsightsBaseURL)
@@ -40,11 +47,18 @@ func New(cfg *config.Config) *Handler {
 	switch cfg.Env {
 	case config.EnvDevelopment:
 		h.devProxy = stdhttputil.NewSingleHostReverseProxy(cfg.DevServerURL)
+		h.executor = htmlutil.NewDevelopmentTemplateExecutor(cfg.DevServerURL.String())
 	case config.EnvProduction:
 		h.assets = http.FileServer(http.Dir(cfg.BuildDir))
+
+		executor, err := htmlutil.NewProductionTemplateExecutor(filepath.Join(cfg.BuildDir, "index.html"))
+		if err != nil {
+			return nil, fmt.Errorf("index.html: %w", err)
+		}
+		h.executor = executor
 	}
 
-	return h
+	return h, nil
 }
 
 // Register registers all application routes on the given HTTP server mux.

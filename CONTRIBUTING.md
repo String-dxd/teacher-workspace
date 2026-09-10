@@ -66,7 +66,7 @@ The server refuses to start if the store provider is `valkey` and Valkey cannot
 be reached: it never falls back to the in-memory store, since a silent downgrade
 would lose sessions in a horizontally scaled deployment.
 
-Open <http://localhost:3000>. The Go server is the entry point: in development it proxies every request to the Rsbuild dev server, so hot reload still works.
+Open <http://localhost:3000>. The Go server is the entry point: in development it fetches the page from the Rsbuild dev server to embed the remote configuration, and proxies every other request, so hot reload still works.
 
 To check a production build, where the server serves `apps/host/dist` instead of proxying:
 
@@ -74,6 +74,35 @@ To check a production build, where the server serves `apps/host/dist` instead of
 pnpm build
 TW_ENV=production go run ./server/cmd/tw
 ```
+
+In production the server parses `apps/host/dist/index.html` once at startup and
+refuses to start when it is missing, so rebuild and restart together.
+
+### Running against a local remote
+
+Posts and Groups are served by the `pg` remote, and Student Insights by `si`.
+Neither is compiled into the host: the server reads their manifest URLs at
+startup and embeds them in the page. Unset, a remote is not registered and its
+route renders the unavailable fallback.
+
+Point the host at a remote running locally, where the Parents Gateway dev
+server defaults to port 3004:
+
+```bash
+TW_REMOTE_POSTS_MURL=http://127.0.0.1:3004/mf-manifest.json go run ./server/cmd/tw
+```
+
+Set both variables to run two remotes at once:
+
+```bash
+TW_REMOTE_POSTS_MURL=http://127.0.0.1:3004/mf-manifest.json \
+  TW_REMOTE_STUDENT_INSIGHTS_MURL=http://127.0.0.1:3005/mf-manifest.json \
+  go run ./server/cmd/tw
+```
+
+The host and the remote share a single React instance, so both must be
+development builds or both production builds. A production host pointed at a
+remote's dev server fails to render it and shows the route's fallback.
 
 ### Common commands
 
