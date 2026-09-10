@@ -20,26 +20,7 @@ import (
 	"github.com/String-sg/teacher-workspace/server/internal/session"
 )
 
-// registerOIDCDiscovery registers the /.well-known/openid-configuration handler
-// on mux, pointing all endpoint URLs at srv.
-func registerOIDCDiscovery(mux *http.ServeMux, srv *httptest.Server) {
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
-		base := srv.URL
-		doc := map[string]any{
-			"issuer":                                base,
-			"authorization_endpoint":                base + "/authorize",
-			"token_endpoint":                        base + "/token",
-			"jwks_uri":                              base + "/jwks",
-			"response_types_supported":              []string{"code"},
-			"subject_types_supported":               []string{"public"},
-			"id_token_signing_alg_values_supported": []string{"RS256"},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(doc) //nolint:errcheck
-	})
-}
-
-// newTestOIDCHandler spins up a minimal OIDC discovery server and returns a
+// newTestOIDCHandler spins up a minimal OIDC test server and returns a
 // Handler with a real RelyingParty pointed at it.
 func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 	t.Helper()
@@ -47,8 +28,6 @@ func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-
-	registerOIDCDiscovery(mux, srv)
 
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -93,8 +72,6 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 	srv := httptest.NewServer(mux)
 	env.srv = srv
 	t.Cleanup(srv.Close)
-
-	registerOIDCDiscovery(mux, srv)
 
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, r *http.Request) {
 		jwk := jose.JSONWebKey{
