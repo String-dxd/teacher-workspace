@@ -55,10 +55,7 @@ func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 		w.Write([]byte(`{"keys":[]}`)) //nolint:errcheck
 	})
 
-	rp, err := oidc.New(t.Context(), srv.URL, "test-client", "test-secret", srv.URL+"/callback")
-	if err != nil {
-		t.Fatalf("oidc.New: %v", err)
-	}
+	rp := oidc.New(srv.URL, "test-client", "test-secret", srv.URL+"/callback", srv.URL+"/authorize", srv.URL+"/token", srv.URL+"/jwks")
 
 	cfg := config.Default()
 	h, err := New(&cfg, rp)
@@ -152,10 +149,7 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 		})
 	})
 
-	rp, err := oidc.New(t.Context(), srv.URL, "test-client", "test-secret", srv.URL+"/callback")
-	if err != nil {
-		t.Fatalf("oidc.New: %v", err)
-	}
+	rp := oidc.New(srv.URL, "test-client", "test-secret", srv.URL+"/callback", srv.URL+"/authorize", srv.URL+"/token", srv.URL+"/jwks")
 
 	cfg := config.Default()
 	h, err := New(&cfg, rp)

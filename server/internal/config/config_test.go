@@ -88,6 +88,9 @@ func TestDefault(t *testing.T) {
 func validOIDCConfig() OIDCConfig {
 	return OIDCConfig{
 		IssuerURL:    &url.URL{Scheme: "http", Host: "localhost:9000"},
+		AuthURL:      &url.URL{Scheme: "http", Host: "localhost:9000", Path: "/authorize"},
+		TokenURL:     &url.URL{Scheme: "http", Host: "localhost:9000", Path: "/token"},
+		JWKSURI:      &url.URL{Scheme: "http", Host: "localhost:9000", Path: "/jwks"},
 		ClientID:     "teacher-workspace",
 		ClientSecret: "teacher-workspace-secret",
 		RedirectURL:  &url.URL{Scheme: "http", Host: "localhost:3000", Path: "/auth/edupass/callback"},
@@ -618,6 +621,9 @@ func TestOIDCConfig_validate(t *testing.T) {
 			t.Run(scheme, func(t *testing.T) {
 				cfg := validOIDCConfig()
 				cfg.IssuerURL = &url.URL{Scheme: scheme, Host: "localhost:9000"}
+				cfg.AuthURL = &url.URL{Scheme: scheme, Host: "localhost:9000", Path: "/authorize"}
+				cfg.TokenURL = &url.URL{Scheme: scheme, Host: "localhost:9000", Path: "/token"}
+				cfg.JWKSURI = &url.URL{Scheme: scheme, Host: "localhost:9000", Path: "/jwks"}
 				cfg.RedirectURL = &url.URL{Scheme: scheme, Host: "localhost:3000", Path: "/auth/edupass/callback"}
 
 				if err := cfg.validate(); err != nil {
@@ -671,6 +677,51 @@ func TestRemoteConfig_validate(t *testing.T) {
 				name:   "issuer url without a host",
 				mutate: func(c *OIDCConfig) { c.IssuerURL = &url.URL{Scheme: "http"} },
 				want:   "TW_OIDC_ISSUER_URL must include host",
+			},
+			{
+				name:   "missing auth url",
+				mutate: func(c *OIDCConfig) { c.AuthURL = nil },
+				want:   "TW_OIDC_AUTH_URL is required",
+			},
+			{
+				name:   "auth url with a non-http scheme",
+				mutate: func(c *OIDCConfig) { c.AuthURL = &url.URL{Scheme: "ftp", Host: "localhost:9000"} },
+				want:   "TW_OIDC_AUTH_URL must use scheme http or https",
+			},
+			{
+				name:   "auth url without a host",
+				mutate: func(c *OIDCConfig) { c.AuthURL = &url.URL{Scheme: "http"} },
+				want:   "TW_OIDC_AUTH_URL must include host",
+			},
+			{
+				name:   "missing token url",
+				mutate: func(c *OIDCConfig) { c.TokenURL = nil },
+				want:   "TW_OIDC_TOKEN_URL is required",
+			},
+			{
+				name:   "token url with a non-http scheme",
+				mutate: func(c *OIDCConfig) { c.TokenURL = &url.URL{Scheme: "ftp", Host: "localhost:9000"} },
+				want:   "TW_OIDC_TOKEN_URL must use scheme http or https",
+			},
+			{
+				name:   "token url without a host",
+				mutate: func(c *OIDCConfig) { c.TokenURL = &url.URL{Scheme: "http"} },
+				want:   "TW_OIDC_TOKEN_URL must include host",
+			},
+			{
+				name:   "missing jwks uri",
+				mutate: func(c *OIDCConfig) { c.JWKSURI = nil },
+				want:   "TW_OIDC_JWKS_URI is required",
+			},
+			{
+				name:   "jwks uri with a non-http scheme",
+				mutate: func(c *OIDCConfig) { c.JWKSURI = &url.URL{Scheme: "ftp", Host: "localhost:9000"} },
+				want:   "TW_OIDC_JWKS_URI must use scheme http or https",
+			},
+			{
+				name:   "jwks uri without a host",
+				mutate: func(c *OIDCConfig) { c.JWKSURI = &url.URL{Scheme: "http"} },
+				want:   "TW_OIDC_JWKS_URI must include host",
 			},
 			{
 				name:   "empty client id",

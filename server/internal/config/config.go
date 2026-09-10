@@ -77,6 +77,9 @@ type SessionValkeyConfig struct {
 // OIDCConfig represents the configuration for the Edupass OIDC relying party.
 type OIDCConfig struct {
 	IssuerURL    *url.URL `dotenv:"TW_OIDC_ISSUER_URL"`
+	AuthURL      *url.URL `dotenv:"TW_OIDC_AUTH_URL"`
+	TokenURL     *url.URL `dotenv:"TW_OIDC_TOKEN_URL"`
+	JWKSURI      *url.URL `dotenv:"TW_OIDC_JWKS_URI"`
 	ClientID     string   `dotenv:"TW_OIDC_CLIENT_ID"`
 	ClientSecret string   `dotenv:"TW_OIDC_CLIENT_SECRET"`
 	RedirectURL  *url.URL `dotenv:"TW_OIDC_REDIRECT_URL"`
@@ -286,35 +289,34 @@ func (c APIProxyConfig) validate() error {
 	return errors.Join(errs...)
 }
 
+func validateHTTPURL(envName string, u *url.URL) []error {
+	if u == nil {
+		return []error{fmt.Errorf("%s is required", envName)}
+	}
+	var errs []error
+	if u.Scheme != "http" && u.Scheme != "https" {
+		errs = append(errs, fmt.Errorf("%s must use scheme http or https; got %q", envName, u))
+	}
+	if u.Host == "" {
+		errs = append(errs, fmt.Errorf("%s must include host; got %q", envName, u))
+	}
+	return errs
+}
+
 func (c OIDCConfig) validate() error {
 	var errs []error
 
-	if c.IssuerURL == nil {
-		errs = append(errs, errors.New("TW_OIDC_ISSUER_URL is required"))
-	} else {
-		if c.IssuerURL.Scheme != "http" && c.IssuerURL.Scheme != "https" {
-			errs = append(errs, fmt.Errorf("TW_OIDC_ISSUER_URL must use scheme http or https; got %q", c.IssuerURL))
-		}
-		if c.IssuerURL.Host == "" {
-			errs = append(errs, fmt.Errorf("TW_OIDC_ISSUER_URL must include host; got %q", c.IssuerURL))
-		}
-	}
+	errs = append(errs, validateHTTPURL("TW_OIDC_ISSUER_URL", c.IssuerURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_AUTH_URL", c.AuthURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_TOKEN_URL", c.TokenURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_JWKS_URI", c.JWKSURI)...)
 	if c.ClientID == "" {
 		errs = append(errs, errors.New("TW_OIDC_CLIENT_ID is required"))
 	}
 	if c.ClientSecret == "" {
 		errs = append(errs, errors.New("TW_OIDC_CLIENT_SECRET is required"))
 	}
-	if c.RedirectURL == nil {
-		errs = append(errs, errors.New("TW_OIDC_REDIRECT_URL is required"))
-	} else {
-		if c.RedirectURL.Scheme != "http" && c.RedirectURL.Scheme != "https" {
-			errs = append(errs, fmt.Errorf("TW_OIDC_REDIRECT_URL must use scheme http or https; got %q", c.RedirectURL))
-		}
-		if c.RedirectURL.Host == "" {
-			errs = append(errs, fmt.Errorf("TW_OIDC_REDIRECT_URL must include host; got %q", c.RedirectURL))
-		}
-	}
+	errs = append(errs, validateHTTPURL("TW_OIDC_REDIRECT_URL", c.RedirectURL)...)
 
 	return errors.Join(errs...)
 }
