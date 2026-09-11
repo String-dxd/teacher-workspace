@@ -27,12 +27,6 @@ func popSessionString(sess *session.Session, key string) string {
 func (h *Handler) authEdupass(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
-	if h.rp == nil {
-		logger.Error("OIDC relying party not initialized")
-		httputil.RenderPlain(w, logger, http.StatusServiceUnavailable)
-		return
-	}
-
 	sess, ok := middleware.SessionFromContext(r.Context())
 	if !ok {
 		logger.Error("session not found in context")
@@ -59,12 +53,6 @@ func (h *Handler) authEdupass(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) authEdupassCallback(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
-
-	if h.rp == nil {
-		logger.Error("OIDC relying party not initialized")
-		httputil.RenderPlain(w, logger, http.StatusServiceUnavailable)
-		return
-	}
 
 	if errParam := r.URL.Query().Get("error"); errParam != "" {
 		logger.Warn("OIDC provider returned error",

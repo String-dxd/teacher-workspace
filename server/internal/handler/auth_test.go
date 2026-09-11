@@ -168,25 +168,6 @@ func newSessionWithOIDC(state, nonce, codeVerifier string) *session.Session {
 }
 
 func TestHandler_authEdupass(t *testing.T) {
-	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
-		cfg := config.Default()
-		h, err := New(&cfg, nil)
-		if err != nil {
-			t.Fatalf("New: %v", err)
-		}
-
-		sess := session.New()
-		req := httptest.NewRequest(http.MethodGet, "/auth/edupass", nil)
-		req = req.WithContext(middleware.WithSession(req.Context(), sess))
-		rec := httptest.NewRecorder()
-
-		h.authEdupass(rec, req)
-
-		if want, got := http.StatusServiceUnavailable, rec.Code; want != got {
-			t.Fatalf("want: %d; got: %d", want, got)
-		}
-	})
-
 	t.Run("redirects to the provider authorization endpoint", func(t *testing.T) {
 		h, srv := newTestOIDCHandler(t)
 
@@ -340,25 +321,6 @@ func TestHandler_authEdupass(t *testing.T) {
 }
 
 func TestHandler_authEdupassCallback(t *testing.T) {
-	t.Run("returns 503 when OIDC relying party is nil", func(t *testing.T) {
-		cfg := config.Default()
-		h, err := New(&cfg, nil)
-		if err != nil {
-			t.Fatalf("New: %v", err)
-		}
-
-		sess := session.New()
-		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state=test-state", nil)
-		req = req.WithContext(middleware.WithSession(req.Context(), sess))
-		rec := httptest.NewRecorder()
-
-		h.authEdupassCallback(rec, req)
-
-		if want, got := http.StatusServiceUnavailable, rec.Code; want != got {
-			t.Fatalf("want: %d; got: %d", want, got)
-		}
-	})
-
 	t.Run("authenticates the session and redirects to /", func(t *testing.T) {
 		env := newCallbackTestEnv(t)
 
