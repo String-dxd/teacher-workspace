@@ -45,13 +45,16 @@ func newTestOIDCHandler(t *testing.T) (*Handler, *httptest.Server) {
 }
 
 // callbackTestEnv holds the test OIDC server and handler for callback tests.
-// Set *tokenNonce and *tokenEmail before each request to control what the mock
-// /token endpoint returns in the signed ID token.
+// Set the pointer fields before each request to control what the mock /token
+// endpoint returns.
 type callbackTestEnv struct {
-	h          *Handler
-	srv        *httptest.Server
-	tokenNonce *string
-	tokenEmail *string
+	h            *Handler
+	srv          *httptest.Server
+	tokenNonce   *string
+	tokenEmail   *string
+	tokenErr     *string // when non-empty, mock returns {"error": <value>} with 400
+	skipIDToken  *bool   // when true, mock omits id_token from the response
+	tokenExpired *bool   // when true, mock sets exp to the past
 }
 
 func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
@@ -62,10 +65,14 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 		t.Fatalf("rsa.GenerateKey: %v", err)
 	}
 
-	var tokenNonce, tokenEmail string
+	var tokenNonce, tokenEmail, tokenErr string
+	var skipIDToken, tokenExpired bool
 	env := &callbackTestEnv{
-		tokenNonce: &tokenNonce,
-		tokenEmail: &tokenEmail,
+		tokenNonce:   &tokenNonce,
+		tokenEmail:   &tokenEmail,
+		tokenErr:     &tokenErr,
+		skipIDToken:  &skipIDToken,
+		tokenExpired: &tokenExpired,
 	}
 
 	mux := http.NewServeMux()
@@ -85,14 +92,26 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 	})
 
 	mux.HandleFunc("POST /token", func(w http.ResponseWriter, r *http.Request) {
+		if *env.tokenErr != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]any{"error": *env.tokenErr}) //nolint:errcheck
+			return
+		}
+
+		expiry := time.Now().Add(time.Hour).Unix()
+		if *env.tokenExpired {
+			expiry = time.Now().Add(-time.Hour).Unix()
+		}
+
 		claims := map[string]any{
 			"iss":   srv.URL,
 			"aud":   []string{"test-client"},
 			"sub":   "test-subject",
-			"email": tokenEmail,
-			"nonce": tokenNonce,
+			"email": *env.tokenEmail,
+			"nonce": *env.tokenNonce,
 			"iat":   time.Now().Unix(),
-			"exp":   time.Now().Add(time.Hour).Unix(),
+			"exp":   expiry,
 		}
 		claimsJSON, err := json.Marshal(claims)
 		if err != nil {
@@ -118,12 +137,15 @@ func newCallbackTestEnv(t *testing.T) *callbackTestEnv {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{ //nolint:errcheck
+		resp := map[string]any{
 			"access_token": "test-access-token",
 			"token_type":   "Bearer",
-			"id_token":     rawIDToken,
-		})
+		}
+		if !*env.skipIDToken {
+			resp["id_token"] = rawIDToken
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp) //nolint:errcheck
 	})
 
 	rp := oidc.New(srv.URL, "test-client", "test-secret", srv.URL+"/callback", srv.URL+"/authorize", srv.URL+"/token", srv.URL+"/jwks")
@@ -268,6 +290,19 @@ func TestHandler_authEdupass(t *testing.T) {
 		}
 		if v, _ := verifier.(string); v == "" {
 			t.Error("want: non-empty; got: empty")
+		}
+	})
+
+	t.Run("returns 500 when session is missing from context", func(t *testing.T) {
+		h, _ := newTestOIDCHandler(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass", nil)
+		rec := httptest.NewRecorder()
+
+		h.authEdupass(rec, req)
+
+		if want, got := http.StatusInternalServerError, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
 		}
 	})
 
@@ -478,6 +513,94 @@ func TestHandler_authEdupassCallback(t *testing.T) {
 		nonce := "test-nonce"
 		*env.tokenNonce = nonce
 		*env.tokenEmail = ""
+
+		sess := newSessionWithOIDC(state, nonce, "test-verifier")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authEdupassCallback(rec, req)
+
+		if want, got := http.StatusForbidden, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("returns 400 when state is missing from callback URL", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		sess := newSessionWithOIDC("test-state", "test-nonce", "test-verifier")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code", nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authEdupassCallback(rec, req)
+
+		if want, got := http.StatusBadRequest, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("returns 500 when session is missing from context", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state=test-state", nil)
+		rec := httptest.NewRecorder()
+
+		env.h.authEdupassCallback(rec, req)
+
+		if want, got := http.StatusInternalServerError, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("returns 403 when token exchange fails", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		state := "test-state"
+		*env.tokenErr = "invalid_grant"
+
+		sess := newSessionWithOIDC(state, "test-nonce", "test-verifier")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authEdupassCallback(rec, req)
+
+		if want, got := http.StatusForbidden, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("returns 500 when token response is missing id_token", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		state := "test-state"
+		nonce := "test-nonce"
+		*env.tokenNonce = nonce
+		*env.tokenEmail = "jane@example.com"
+		*env.skipIDToken = true
+
+		sess := newSessionWithOIDC(state, nonce, "test-verifier")
+		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
+		req = req.WithContext(middleware.WithSession(req.Context(), sess))
+		rec := httptest.NewRecorder()
+
+		env.h.authEdupassCallback(rec, req)
+
+		if want, got := http.StatusInternalServerError, rec.Code; want != got {
+			t.Fatalf("want: %d; got: %d", want, got)
+		}
+	})
+
+	t.Run("returns 403 when ID token is expired", func(t *testing.T) {
+		env := newCallbackTestEnv(t)
+
+		state := "test-state"
+		nonce := "test-nonce"
+		*env.tokenNonce = nonce
+		*env.tokenEmail = "jane@example.com"
+		*env.tokenExpired = true
 
 		sess := newSessionWithOIDC(state, nonce, "test-verifier")
 		req := httptest.NewRequest(http.MethodGet, "/auth/edupass/callback?code=test-code&state="+state, nil)
