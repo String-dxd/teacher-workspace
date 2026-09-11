@@ -31,6 +31,7 @@ type Config struct {
 	Server   ServerConfig   `dotenv:",squash"`
 	Session  SessionConfig  `dotenv:",squash"`
 	APIProxy APIProxyConfig `dotenv:",squash"`
+	OIDC     OIDCConfig     `dotenv:",squash"`
 	Remote   RemoteConfig   `dotenv:",squash"`
 }
 
@@ -71,6 +72,17 @@ type SessionConfig struct {
 type SessionValkeyConfig struct {
 	URL    *url.URL `dotenv:"TW_SESSION_VALKEY_URL"`
 	Prefix string   `dotenv:"TW_SESSION_VALKEY_PREFIX"`
+}
+
+// OIDCConfig represents the configuration for the Edupass OIDC relying party.
+type OIDCConfig struct {
+	IssuerURL    *url.URL `dotenv:"TW_OIDC_ISSUER_URL"`
+	AuthURL      *url.URL `dotenv:"TW_OIDC_AUTH_URL"`
+	TokenURL     *url.URL `dotenv:"TW_OIDC_TOKEN_URL"`
+	JWKSURI      *url.URL `dotenv:"TW_OIDC_JWKS_URI"`
+	ClientID     string   `dotenv:"TW_OIDC_CLIENT_ID"`
+	ClientSecret string   `dotenv:"TW_OIDC_CLIENT_SECRET"`
+	RedirectURL  *url.URL `dotenv:"TW_OIDC_REDIRECT_URL"`
 }
 
 // APIProxyConfig represents the configuration for the backend proxies.
@@ -146,7 +158,7 @@ func (c Config) Validate() error {
 		}
 	}
 
-	return errors.Join(append(errs, c.Server.validate(), c.Session.validate(), c.APIProxy.validate(), c.Remote.validate())...)
+	return errors.Join(append(errs, c.Server.validate(), c.Session.validate(), c.APIProxy.validate(), c.Remote.validate(), c.OIDC.validate())...)
 }
 
 func (c ServerConfig) validate() error {
@@ -273,6 +285,38 @@ func (c APIProxyConfig) validate() error {
 	if c.TokenTTL < time.Second {
 		errs = append(errs, fmt.Errorf("TW_API_PROXY_TOKEN_TTL must be at least 1s; got %v", c.TokenTTL))
 	}
+
+	return errors.Join(errs...)
+}
+
+func validateHTTPURL(envName string, u *url.URL) []error {
+	if u == nil {
+		return []error{fmt.Errorf("%s is required", envName)}
+	}
+	var errs []error
+	if u.Scheme != "http" && u.Scheme != "https" {
+		errs = append(errs, fmt.Errorf("%s must use scheme http or https; got %q", envName, u))
+	}
+	if u.Host == "" {
+		errs = append(errs, fmt.Errorf("%s must include host; got %q", envName, u))
+	}
+	return errs
+}
+
+func (c OIDCConfig) validate() error {
+	var errs []error
+
+	errs = append(errs, validateHTTPURL("TW_OIDC_ISSUER_URL", c.IssuerURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_AUTH_URL", c.AuthURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_TOKEN_URL", c.TokenURL)...)
+	errs = append(errs, validateHTTPURL("TW_OIDC_JWKS_URI", c.JWKSURI)...)
+	if c.ClientID == "" {
+		errs = append(errs, errors.New("TW_OIDC_CLIENT_ID is required"))
+	}
+	if c.ClientSecret == "" {
+		errs = append(errs, errors.New("TW_OIDC_CLIENT_SECRET is required"))
+	}
+	errs = append(errs, validateHTTPURL("TW_OIDC_REDIRECT_URL", c.RedirectURL)...)
 
 	return errors.Join(errs...)
 }

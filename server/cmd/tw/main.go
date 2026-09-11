@@ -18,6 +18,7 @@ import (
 	"github.com/String-sg/teacher-workspace/server/internal/config"
 	"github.com/String-sg/teacher-workspace/server/internal/handler"
 	"github.com/String-sg/teacher-workspace/server/internal/middleware"
+	"github.com/String-sg/teacher-workspace/server/internal/oidc"
 	"github.com/String-sg/teacher-workspace/server/internal/session"
 	"github.com/String-sg/teacher-workspace/server/internal/session/memstore"
 	"github.com/String-sg/teacher-workspace/server/internal/session/valkeystore"
@@ -83,9 +84,19 @@ func main() {
 		Secure:           cfg.Env == config.EnvProduction,
 	})
 
+	rp := oidc.New(
+		cfg.OIDC.IssuerURL.String(),
+		cfg.OIDC.ClientID,
+		cfg.OIDC.ClientSecret,
+		cfg.OIDC.RedirectURL.String(),
+		cfg.OIDC.AuthURL.String(),
+		cfg.OIDC.TokenURL.String(),
+		cfg.OIDC.JWKSURI.String(),
+	)
+
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	mux := http.NewServeMux()
-	h, err := handler.New(&cfg)
+	h, err := handler.New(&cfg, rp)
 	if err != nil {
 		slog.Error("failed to create handler", "err", err)
 		os.Exit(1)

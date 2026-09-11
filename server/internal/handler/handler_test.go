@@ -12,7 +12,20 @@ import (
 	"testing"
 
 	"github.com/String-sg/teacher-workspace/server/internal/config"
+	"github.com/String-sg/teacher-workspace/server/internal/oidc"
 )
+
+func testRP() *oidc.RelyingParty {
+	return oidc.New(
+		"http://test-issuer",
+		"test-client",
+		"test-secret",
+		"http://test-issuer/callback",
+		"http://test-issuer/authorize",
+		"http://test-issuer/token",
+		"http://test-issuer/jwks",
+	)
+}
 
 func TestNew(t *testing.T) {
 	t.Run("fails when index.html is missing in production environment", func(t *testing.T) {
@@ -20,7 +33,7 @@ func TestNew(t *testing.T) {
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = t.TempDir()
 
-		_, err := New(&cfg)
+		_, err := New(&cfg, testRP())
 
 		if !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("want err: %v; got: %v", fs.ErrNotExist, err)
@@ -37,7 +50,7 @@ func TestNew(t *testing.T) {
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = buildDir
 
-		_, err := New(&cfg)
+		_, err := New(&cfg, testRP())
 
 		if err == nil {
 			t.Fatal("want err: non-nil; got: nil")
@@ -76,7 +89,7 @@ func TestHandler_Register(t *testing.T) {
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h, err := New(&cfg)
+		h, err := New(&cfg, testRP())
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -132,7 +145,7 @@ func TestHandler_Register(t *testing.T) {
 		cfg.BuildDir = buildDir
 		cfg.APIProxy.PostsBaseURL = postsBackendURL
 
-		h, err := New(&cfg)
+		h, err := New(&cfg, testRP())
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -188,7 +201,7 @@ func TestHandler_Register(t *testing.T) {
 		cfg.Env = config.EnvProduction
 		cfg.BuildDir = buildDir
 
-		h, err := New(&cfg)
+		h, err := New(&cfg, testRP())
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}

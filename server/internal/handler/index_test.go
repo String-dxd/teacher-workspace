@@ -34,7 +34,7 @@ func TestHandler_index(t *testing.T) {
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
 			Remote:       config.RemoteConfig{PostsManifestURL: "https://pg.test/mf-manifest.json"},
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -77,7 +77,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -144,7 +144,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -169,7 +169,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestHandler_index(t *testing.T) {
 				PostsManifestURL:           "https://pg.test/mf-manifest.json",
 				StudentInsightsManifestURL: "https://si.test/mf-manifest.json",
 			},
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -232,7 +232,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:      config.EnvProduction,
 			BuildDir: buildDir,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -256,7 +256,7 @@ func TestHandler_index(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:      config.EnvProduction,
 			BuildDir: buildDir,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -272,7 +272,7 @@ func TestHandler_index(t *testing.T) {
 	})
 
 	t.Run("return 404 for an unknown environment", func(t *testing.T) {
-		h, err := New(&config.Config{})
+		h, err := New(&config.Config{}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -304,7 +304,7 @@ func TestHandler_static(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:          config.EnvDevelopment,
 			DevServerURL: devServerURL,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -337,7 +337,7 @@ func TestHandler_static(t *testing.T) {
 		h, err := New(&config.Config{
 			Env:      config.EnvProduction,
 			BuildDir: buildDir,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -356,7 +356,7 @@ func TestHandler_static(t *testing.T) {
 	})
 
 	t.Run("return 404 for an unknown environment", func(t *testing.T) {
-		h, err := New(&config.Config{})
+		h, err := New(&config.Config{}, nil)
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}

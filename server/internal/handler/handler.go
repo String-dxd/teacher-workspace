@@ -10,11 +10,14 @@ import (
 	"github.com/String-sg/teacher-workspace/server/internal/htmlutil"
 	"github.com/String-sg/teacher-workspace/server/internal/httputil"
 	"github.com/String-sg/teacher-workspace/server/internal/middleware"
+	"github.com/String-sg/teacher-workspace/server/internal/oidc"
 )
 
 // Handler represents a handler for the application.
 type Handler struct {
 	cfg *config.Config
+
+	rp *oidc.RelyingParty
 
 	devProxy             *stdhttputil.ReverseProxy
 	studentInsightsProxy *stdhttputil.ReverseProxy
@@ -26,10 +29,11 @@ type Handler struct {
 
 // New creates a new Handler. In production it parses index.html once, so a
 // missing or malformed page fails here rather than on the first request.
-func New(cfg *config.Config) (*Handler, error) {
+func New(cfg *config.Config, rp *oidc.RelyingParty) (*Handler, error) {
 	h := &Handler{
 		cfg:     cfg,
 		runtime: newRuntimeConfig(cfg.Remote),
+		rp:      rp,
 		studentInsightsProxy: &stdhttputil.ReverseProxy{
 			Rewrite: func(pr *stdhttputil.ProxyRequest) {
 				pr.SetURL(cfg.APIProxy.StudentInsightsBaseURL)
@@ -70,6 +74,8 @@ func (h *Handler) Register(mux *http.ServeMux, session middleware.Middleware) {
 	// Session-scoped routes: everything registered on this sub-mux runs
 	// through the session middleware, which is applied a single time.
 	app := http.NewServeMux()
+	app.HandleFunc("GET /auth/edupass", h.authEdupass)
+	app.HandleFunc("GET /auth/edupass/callback", h.authEdupassCallback)
 	app.HandleFunc("/", h.index)
 
 	app.HandleFunc("/api/{app}/", h.proxy)
